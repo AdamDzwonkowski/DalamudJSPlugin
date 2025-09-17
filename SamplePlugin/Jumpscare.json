@@ -1,0 +1,13 @@
+{
+  "Author": "Duster",
+  "Name": "FFXIVScare",
+  "Punchline": "Give yourself a heart attack (inspired by ymy (reed)'s Terraria mod).",
+  "Description": "/jumpscare : set up images and sfx to play.\n/jumpscaresettings : change odds of jumpscare appearing",
+  "ApplicableVersion": "any",
+  "Tags": [
+    "scary",
+    "scare",
+    "plugin",
+    "custom"
+  ]
+}
