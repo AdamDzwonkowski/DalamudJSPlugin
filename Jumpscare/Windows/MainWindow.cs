@@ -1,101 +1,80 @@
-﻿using System;
-using System.Numerics;
 using Dalamud.Bindings.ImGui;
-using Dalamud.Interface.Utility;
-using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
-using Lumina.Excel.Sheets;
+using System;
+using System.IO;
+using System.Numerics;
 
 namespace Jumpscare.Windows;
 
 public class MainWindow : Window, IDisposable
 {
-    private readonly string goatImagePath;
-    private readonly Plugin plugin;
+    private GIFConvert tongueGif;
+    private DateTime lastFrameTime;
+
+    private string pluginDir;
+    private string imgPath;
 
     // We give this window a hidden ID using ##.
     // The user will see "My Amazing Window" as window title,
     // but for ImGui the ID is "My Amazing Window##With a hidden ID"
-    public MainWindow(Plugin plugin, string goatImagePath)
-        : base("My Amazing Window##With a hidden ID", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
+    public MainWindow(Plugin plugin, string tongueImagePath)
+    : base("My Amazing Window##With a hidden ID",
+           ImGuiWindowFlags.NoTitleBar
+         | ImGuiWindowFlags.NoScrollbar
+         | ImGuiWindowFlags.NoDecoration
+         | ImGuiWindowFlags.NoFocusOnAppearing
+         | ImGuiWindowFlags.NoNavFocus
+         | ImGuiWindowFlags.NoInputs
+         | ImGuiWindowFlags.NoMouseInputs
+         | ImGuiWindowFlags.NoBackground)
     {
-        SizeConstraints = new WindowSizeConstraints
-        {
-            MinimumSize = new Vector2(375, 330),
-            MaximumSize = new Vector2(float.MaxValue, float.MaxValue)
-        };
-
-        this.goatImagePath = goatImagePath;
-        this.plugin = plugin;
+        Size = new Vector2(1920f, 1080f);
+        pluginDir = Plugin.PluginInterface.GetPluginConfigDirectory();
+        imgPath = Path.Combine(pluginDir, "profile.png");
+        tongueGif = new GIFConvert(imgPath, 10);
+        lastFrameTime = DateTime.Now;
     }
 
-    public void Dispose() { }
+    public void Dispose() {
+        tongueGif?.Dispose();
+    }
 
     public override void Draw()
     {
-        ImGui.TextUnformatted($"The random config bool is {plugin.Configuration.SomePropertyToBeSavedAndWithADefault}");
+        Vector2 windowSize = new Vector2(1920f, 1080f);
+        Vector2 centerPos = new Vector2(0f, 0f);
 
-        if (ImGui.Button("Show Settings"))
+        ImGui.SetNextWindowSize(windowSize, ImGuiCond.Always);
+        ImGui.SetNextWindowPos(centerPos, ImGuiCond.Always);
+
+        ImGui.Begin("MainWindow",
+                    ImGuiWindowFlags.NoScrollbar
+                  | ImGuiWindowFlags.NoTitleBar
+                  | ImGuiWindowFlags.NoDecoration
+                  | ImGuiWindowFlags.NoFocusOnAppearing
+                  | ImGuiWindowFlags.NoNavFocus
+                  | ImGuiWindowFlags.NoInputs
+                  | ImGuiWindowFlags.NoMouseInputs
+                  | ImGuiWindowFlags.NoBackground);
+
+        if (Path.GetExtension(imgPath).Equals(".gif", StringComparison.OrdinalIgnoreCase))
         {
-            plugin.ToggleConfigUi();
+            var now = DateTime.Now;
+            float deltaMs = (float)(now - lastFrameTime).TotalMilliseconds;
+            lastFrameTime = now;
+
+            tongueGif?.Update(deltaMs);
+            tongueGif?.Render(windowSize);
+        }
+        else
+        {
+            var tongueTexture = Plugin.TextureProvider.GetFromFile(imgPath)?.GetWrapOrDefault();
+            if (tongueTexture != null)
+                ImGui.Image(tongueTexture.Handle, windowSize);
+            else
+                ImGui.TextUnformatted("Image not found.");
         }
 
-        ImGui.Spacing();
-
-        // Normally a BeginChild() would have to be followed by an unconditional EndChild(),
-        // ImRaii takes care of this after the scope ends.
-        // This works for all ImGui functions that require specific handling, examples are BeginTable() or Indent().
-        using (var child = ImRaii.Child("SomeChildWithAScrollbar", Vector2.Zero, true))
-        {
-            // Check if this child is drawing
-            if (child.Success)
-            {
-                ImGui.TextUnformatted("Hi");
-                var goatImage = Plugin.TextureProvider.GetFromFile(goatImagePath).GetWrapOrDefault();
-                if (goatImage != null)
-                {
-                    using (ImRaii.PushIndent(55f))
-                    {
-                        ImGui.Image(goatImage.Handle, goatImage.Size);
-                    }
-                }
-                else
-                {
-                    ImGui.TextUnformatted("Image not found.");
-                }
-
-                ImGuiHelpers.ScaledDummy(20.0f);
-
-                // Example for other services that Dalamud provides.
-                // ClientState provides a wrapper filled with information about the local player object and client.
-
-                var localPlayer = Plugin.ClientState.LocalPlayer;
-                if (localPlayer == null)
-                {
-                    ImGui.TextUnformatted("Our local player is currently not loaded.");
-                    return;
-                }
-
-                if (!localPlayer.ClassJob.IsValid)
-                {
-                    ImGui.TextUnformatted("Our current job is currently not valid.");
-                    return;
-                }
-
-                // If you want to see the Macro representation of this SeString use `ToMacroString()`
-                ImGui.TextUnformatted($"Our current job is ({localPlayer.ClassJob.RowId}) \"{localPlayer.ClassJob.Value.Abbreviation}\"");
-
-                // Example for quarrying Lumina directly, getting the name of our current area.
-                var territoryId = Plugin.ClientState.TerritoryType;
-                if (Plugin.DataManager.GetExcelSheet<TerritoryType>().TryGetRow(territoryId, out var territoryRow))
-                {
-                    ImGui.TextUnformatted($"We are currently in ({territoryId}) \"{territoryRow.PlaceName.Value.Name}\"");
-                }
-                else
-                {
-                    ImGui.TextUnformatted("Invalid territory.");
-                }
-            }
-        }
+        ImGui.End();
     }
 }

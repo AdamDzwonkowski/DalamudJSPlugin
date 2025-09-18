@@ -9,9 +9,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="..\Data\1758028660865.gif">
+    <Content Include="..\Data\profile.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Visible>false</Visible>
     </Content>
   </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.*" />
+  </ItemGroup>
+    
 </Project>
