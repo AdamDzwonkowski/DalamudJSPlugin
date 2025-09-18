@@ -11,7 +11,7 @@ public class MainWindow : Window, IDisposable
     private GIFConvert tongueGif;
     private DateTime lastFrameTime;
 
-    private string pluginDir;
+    private string dllDir;
     private string imgPath;
 
     // We give this window a hidden ID using ##.
@@ -29,9 +29,10 @@ public class MainWindow : Window, IDisposable
          | ImGuiWindowFlags.NoBackground)
     {
         Size = new Vector2(1920f, 1080f);
-        pluginDir = Plugin.PluginInterface.GetPluginConfigDirectory();
-        imgPath = Path.Combine(pluginDir, "profile.png");
-        tongueGif = new GIFConvert(imgPath, 10);
+        dllDir = Plugin.PluginInterface.AssemblyLocation.Directory?.FullName ?? "";
+        imgPath = Path.Combine(dllDir, "Data", "profile.png");
+
+        //tongueGif = new GIFConvert(imgPath, 10);
         lastFrameTime = DateTime.Now;
     }
 
@@ -57,23 +58,23 @@ public class MainWindow : Window, IDisposable
                   | ImGuiWindowFlags.NoMouseInputs
                   | ImGuiWindowFlags.NoBackground);
 
-        if (Path.GetExtension(imgPath).Equals(".gif", StringComparison.OrdinalIgnoreCase))
-        {
-            var now = DateTime.Now;
-            float deltaMs = (float)(now - lastFrameTime).TotalMilliseconds;
-            lastFrameTime = now;
+        //if (Path.GetExtension(imgPath).Equals(".gif", StringComparison.OrdinalIgnoreCase))
+        //{
+        //    var now = DateTime.Now;
+        //    float deltaMs = (float)(now - lastFrameTime).TotalMilliseconds;
+        //    lastFrameTime = now;
 
-            tongueGif?.Update(deltaMs);
-            tongueGif?.Render(windowSize);
-        }
-        else
-        {
+        //    tongueGif?.Update(deltaMs);
+        //    tongueGif?.Render(windowSize);
+        //}
+        //else
+        //{
             var tongueTexture = Plugin.TextureProvider.GetFromFile(imgPath)?.GetWrapOrDefault();
             if (tongueTexture != null)
                 ImGui.Image(tongueTexture.Handle, windowSize);
             else
-                ImGui.TextUnformatted("Image not found.");
-        }
+                ImGui.TextUnformatted("Image not found: {imgPath}");
+        //}
 
         ImGui.End();
     }
