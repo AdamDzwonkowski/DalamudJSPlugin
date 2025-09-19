@@ -29,8 +29,9 @@ public sealed class Plugin : IDalamudPlugin
     {
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
 
-        // You might normally want to embed resources and load them from the manifest stream
-        var imgPath = Path.Combine(PluginInterface.AssemblyLocation.Directory?.FullName!, "profile.png");
+        var dllDir = PluginInterface.AssemblyLocation.Directory?.FullName
+                     ?? PluginInterface.GetPluginConfigDirectory();
+        var imgPath = Path.Combine(dllDir, "Data", "foxy-jumpscare.gif");
 
         ConfigWindow = new ConfigWindow(this);
         MainWindow = new MainWindow(this, imgPath);
@@ -43,20 +44,11 @@ public sealed class Plugin : IDalamudPlugin
             HelpMessage = "A useful message to display in /xlhelp"
         });
 
-        // Tell the UI system that we want our windows to be drawn throught he window system
         PluginInterface.UiBuilder.Draw += WindowSystem.Draw;
-
-        // This adds a button to the plugin installer entry of this plugin which allows
-        // toggling the display status of the configuration ui
         PluginInterface.UiBuilder.OpenConfigUi += ToggleConfigUi;
-
-        // Adds another button doing the same but for the main ui of the plugin
         PluginInterface.UiBuilder.OpenMainUi += ToggleMainUi;
 
-        // Add a simple message to the log with level set to information
-        // Use /xllog to open the log window in-game
-        // Example Output: 00:57:54.959 | INF | [SamplePlugin] ===A cool log message from Sample Plugin===
-        Log.Information($"===A cool log message from {PluginInterface.Manifest.Name}===");
+        Log.Information($"===A cool log message from {PluginInterface.Manifest?.Name ?? "Unknown Plugin"}===");
     }
 
     public void Dispose()

@@ -1,81 +1,105 @@
 using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.Textures;
 using Dalamud.Interface.Windowing;
 using System;
 using System.IO;
 using System.Numerics;
 
-namespace Jumpscare.Windows;
-
-public class MainWindow : Window, IDisposable
+namespace Jumpscare.Windows
 {
-    private GIFConvert tongueGif;
-    private DateTime lastFrameTime;
-
-    private string dllDir;
-    private string imgPath;
-
-    // We give this window a hidden ID using ##.
-    // The user will see "My Amazing Window" as window title,
-    // but for ImGui the ID is "My Amazing Window##With a hidden ID"
-    public MainWindow(Plugin plugin, string tongueImagePath)
-    : base("My Amazing Window##With a hidden ID",
-           ImGuiWindowFlags.NoTitleBar
-         | ImGuiWindowFlags.NoScrollbar
-         | ImGuiWindowFlags.NoDecoration
-         | ImGuiWindowFlags.NoFocusOnAppearing
-         | ImGuiWindowFlags.NoNavFocus
-         | ImGuiWindowFlags.NoInputs
-         | ImGuiWindowFlags.NoMouseInputs
-         | ImGuiWindowFlags.NoBackground)
+    public class MainWindow : Window, IDisposable
     {
-        Size = new Vector2(1920f, 1080f);
-        dllDir = Plugin.PluginInterface.AssemblyLocation.Directory?.FullName ?? "";
-        imgPath = Path.Combine(dllDir, "Data", "profile.png");
+        private GIFConvert? tongueGif;
+        private ISharedImmediateTexture? tongueTexture;
 
-        //tongueGif = new GIFConvert(imgPath, 10);
-        lastFrameTime = DateTime.Now;
-    }
+        private DateTime lastFrameTime;
+        private readonly string imgPath;
+        private bool loaded = false;
 
-    public void Dispose() {
-        tongueGif?.Dispose();
-    }
+        public MainWindow(Plugin plugin, string tongueImagePath)
+            : base("My Amazing Window##WithHiddenID",
+                   ImGuiWindowFlags.NoTitleBar
+                 | ImGuiWindowFlags.NoScrollbar
+                 | ImGuiWindowFlags.NoDecoration
+                 | ImGuiWindowFlags.NoFocusOnAppearing
+                 | ImGuiWindowFlags.NoNavFocus
+                 | ImGuiWindowFlags.NoInputs
+                 | ImGuiWindowFlags.NoMouseInputs
+                 | ImGuiWindowFlags.NoBackground)
+        {
+            Size = new Vector2(1920f, 1080f);
+            imgPath = tongueImagePath;
+            lastFrameTime = DateTime.Now;
+        }
 
-    public override void Draw()
-    {
-        Vector2 windowSize = new Vector2(1920f, 1080f);
-        Vector2 centerPos = new Vector2(0f, 0f);
+        public void Dispose()
+        {
+            tongueGif?.Dispose();
+        }
 
-        ImGui.SetNextWindowSize(windowSize, ImGuiCond.Always);
-        ImGui.SetNextWindowPos(centerPos, ImGuiCond.Always);
+        private void LoadResources()
+        {
+            if (loaded) return;
 
-        ImGui.Begin("MainWindow",
-                    ImGuiWindowFlags.NoScrollbar
-                  | ImGuiWindowFlags.NoTitleBar
-                  | ImGuiWindowFlags.NoDecoration
-                  | ImGuiWindowFlags.NoFocusOnAppearing
-                  | ImGuiWindowFlags.NoNavFocus
-                  | ImGuiWindowFlags.NoInputs
-                  | ImGuiWindowFlags.NoMouseInputs
-                  | ImGuiWindowFlags.NoBackground);
+            if (!File.Exists(imgPath))
+            {
+                Plugin.Log.Error($"Image not found: {imgPath}");
+                loaded = true;
+                return;
+            }
 
-        //if (Path.GetExtension(imgPath).Equals(".gif", StringComparison.OrdinalIgnoreCase))
-        //{
-        //    var now = DateTime.Now;
-        //    float deltaMs = (float)(now - lastFrameTime).TotalMilliseconds;
-        //    lastFrameTime = now;
-
-        //    tongueGif?.Update(deltaMs);
-        //    tongueGif?.Render(windowSize);
-        //}
-        //else
-        //{
-            var tongueTexture = Plugin.TextureProvider.GetFromFile(imgPath)?.GetWrapOrDefault();
-            if (tongueTexture != null)
-                ImGui.Image(tongueTexture.Handle, windowSize);
+            if (Path.GetExtension(imgPath).Equals(".gif", StringComparison.OrdinalIgnoreCase))
+            {
+                tongueGif = new GIFConvert(imgPath, frameDelayMs: 10);
+                tongueGif.EnsureTexturesLoaded();
+            }
             else
-                ImGui.TextUnformatted("Image not found: {imgPath}");
-        //}
+            {
+                tongueTexture = Plugin.TextureProvider.GetFromFile(imgPath);
+            }
 
-        ImGui.End();
+            loaded = true;
+        }
+
+        public override void Draw()
+        {
+            LoadResources(); // ensures resources only load once
+
+            Vector2 windowSize = new(1920f, 1080f);
+            Vector2 centerPos = new(0f, 0f);
+
+            ImGui.SetNextWindowSize(windowSize, ImGuiCond.Always);
+            ImGui.SetNextWindowPos(centerPos, ImGuiCond.Always);
+
+            ImGui.Begin("MainWindow",
+                        ImGuiWindowFlags.NoScrollbar
+                      | ImGuiWindowFlags.NoTitleBar
+                      | ImGuiWindowFlags.NoDecoration
+                      | ImGuiWindowFlags.NoFocusOnAppearing
+                      | ImGuiWindowFlags.NoNavFocus
+                      | ImGuiWindowFlags.NoInputs
+                      | ImGuiWindowFlags.NoMouseInputs
+                      | ImGuiWindowFlags.NoBackground);
+
+            if (tongueGif != null)
+            {
+                float deltaMs = (float)(DateTime.Now - lastFrameTime).TotalMilliseconds;
+                lastFrameTime = DateTime.Now;
+
+                tongueGif.Update(deltaMs);
+                tongueGif.Render(windowSize);
+            }
+            else if (tongueTexture != null)
+            {
+                var wrap = tongueTexture.GetWrapOrEmpty();
+                ImGui.Image(wrap.Handle, windowSize);
+            }
+            else
+            {
+                ImGui.TextUnformatted($"Image not found: {imgPath}");
+            }
+
+            ImGui.End();
+        }
     }
 }
