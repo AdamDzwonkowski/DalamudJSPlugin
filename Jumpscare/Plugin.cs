@@ -16,6 +16,7 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] internal static IClientState ClientState { get; private set; } = null!;
     [PluginService] internal static IDataManager DataManager { get; private set; } = null!;
     [PluginService] internal static IPluginLog Log { get; private set; } = null!;
+    [PluginService] internal static IFramework Framework { get; private set; } = null!;
 
     private const string CommandName = "/jumpscare";
 
@@ -31,10 +32,10 @@ public sealed class Plugin : IDalamudPlugin
 
         var dllDir = PluginInterface.AssemblyLocation.Directory?.FullName
                      ?? PluginInterface.GetPluginConfigDirectory();
-        var imgPath = Path.Combine(dllDir, "Data", "foxy-jumpscare.gif");
+        var imgPath = Path.Combine(dllDir, "Data", "1758028660865.gif");
 
         ConfigWindow = new ConfigWindow(this);
-        MainWindow = new MainWindow(this, imgPath);
+        MainWindow = new MainWindow(imgPath);
 
         WindowSystem.AddWindow(ConfigWindow);
         WindowSystem.AddWindow(MainWindow);
@@ -53,7 +54,7 @@ public sealed class Plugin : IDalamudPlugin
 
     public void Dispose()
     {
-        // Unregister all actions to not leak anythign during disposal of plugin
+        // Unregister all actions to not leak anything during disposal of plugin
         PluginInterface.UiBuilder.Draw -= WindowSystem.Draw;
         PluginInterface.UiBuilder.OpenConfigUi -= ToggleConfigUi;
         PluginInterface.UiBuilder.OpenMainUi -= ToggleMainUi;
