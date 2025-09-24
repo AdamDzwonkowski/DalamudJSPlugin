@@ -28,11 +28,13 @@ namespace Jumpscare
         private readonly List<Frame> frames = new();
         private readonly List<(string Path, int DelayMs)> framePaths = new();
         public IReadOnlyList<(string Path, int DelayMs)> FramePaths => framePaths;
+
         private int currentFrame = 0;
-        private float elapsedMs = 0f;
+        private float timeAccumulator = 0f;
         private readonly string tempFolder;
         private bool texturesLoaded = false;
 
+        public bool Finished { get; private set; } = false;
         public int Width { get; private set; }
         public int Height { get; private set; }
 
@@ -48,7 +50,6 @@ namespace Jumpscare
         {
             using var img = Image.Load<Rgba32>(gifPath);
 
-            // Try to extract delays for all frames
             for (int i = 0; i < img.Frames.Count; i++)
             {
                 var frame = img.Frames.CloneFrame(i);
@@ -56,16 +57,14 @@ namespace Jumpscare
 
                 try
                 {
-                    // Attempt several strategies to find frame delay robustly
                     var gifMeta = frame.Metadata.GetGifMetadata();
 
                     if (gifMeta != null)
                     {
-                        // 1) Look for properties/fields with "delay" in the name (public + non-public)
                         var t = gifMeta.GetType();
                         bool found = false;
 
-                        // check properties
+                        // properties
                         foreach (var prop in t.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance))
                         {
                             if (!prop.Name.ToLowerInvariant().Contains("delay")) continue;
@@ -78,7 +77,7 @@ namespace Jumpscare
                             }
                         }
 
-                        // if not found, check fields
+                        // fields
                         if (!found)
                         {
                             foreach (var field in t.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance))
@@ -94,34 +93,24 @@ namespace Jumpscare
                             }
                         }
 
-                        // 2) If still not found, try a few known internal names
+                        // fallback candidates
                         if (!found)
                         {
                             var candidates = new[] { "FrameDelay", "frameDelay", "_frameDelays", "frameDelays", "FrameDelays" };
                             foreach (var name in candidates)
                             {
                                 var f = t.GetField(name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                                if (f != null)
+                                if (f != null && TryInterpretDelayValue(f.GetValue(gifMeta), i, out var ms))
                                 {
-                                    var val = f.GetValue(gifMeta);
-                                    if (TryInterpretDelayValue(val, i, out var ms))
-                                    {
-                                        delayMs = ms;
-                                        found = true;
-                                        break;
-                                    }
+                                    delayMs = ms;
+                                    break;
                                 }
 
                                 var p = t.GetProperty(name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                                if (p != null)
+                                if (p != null && TryInterpretDelayValue(p.GetValue(gifMeta), i, out ms))
                                 {
-                                    var val = p.GetValue(gifMeta);
-                                    if (TryInterpretDelayValue(val, i, out var ms))
-                                    {
-                                        delayMs = ms;
-                                        found = true;
-                                        break;
-                                    }
+                                    delayMs = ms;
+                                    break;
                                 }
                             }
                         }
@@ -129,21 +118,17 @@ namespace Jumpscare
                 }
                 catch (Exception ex)
                 {
-                    // don't crash on metadata probing — fallback will be used
                     Plugin.Log?.Error($"GIFConvert: error probing frame {i} delay: {ex}");
                 }
 
-                // Save frame to temporary PNG
                 string framePath = Path.Combine(tempFolder, $"frame_{i}.png");
                 frame.Save(framePath, new PngEncoder());
-
                 framePaths.Add((framePath, delayMs));
 
                 Plugin.Log?.Info($"GIFConvert: frame {i} delay = {delayMs}ms (saved {framePath})");
             }
         }
 
-        // Interpret a variety of value types (single numeric or arrays)
         private static bool TryInterpretDelayValue(object? value, int frameIndex, out int delayMs)
         {
             delayMs = 100;
@@ -151,21 +136,13 @@ namespace Jumpscare
 
             try
             {
-                // Arrays: try to pick the element at frameIndex if present, otherwise first element
-                if (value is Array arr)
+                if (value is Array arr && arr.Length > 0)
                 {
-                    if (arr.Length == 0) return false;
-
-                    object? elem = null;
-                    if (frameIndex < arr.Length) elem = arr.GetValue(frameIndex);
-                    else elem = arr.GetValue(0);
-
-                    if (elem == null) return false;
-
-                    return TryInterpretDelaySingle(elem, out delayMs);
+                    object? elem = frameIndex < arr.Length ? arr.GetValue(frameIndex) : arr.GetValue(0);
+                    if (elem != null)
+                        return TryInterpretDelaySingle(elem, out delayMs);
                 }
 
-                // Single numeric-like value
                 return TryInterpretDelaySingle(value, out delayMs);
             }
             catch
@@ -177,36 +154,17 @@ namespace Jumpscare
         private static bool TryInterpretDelaySingle(object value, out int delayMs)
         {
             delayMs = 100;
-
             switch (value)
             {
-                case byte b:
-                    delayMs = Math.Max(b * 10, 10);
-                    return true;
-                case sbyte sb:
-                    delayMs = Math.Max((sb) * 10, 10);
-                    return true;
-                case ushort us:
-                    delayMs = Math.Max(us * 10, 10);
-                    return true;
-                case short s:
-                    delayMs = Math.Max(s * 10, 10);
-                    return true;
-                case int i:
-                    // heuristic: small ints likely centiseconds
-                    delayMs = i <= 1000 ? Math.Max(i * 10, 10) : i;
-                    return true;
-                case long l:
-                    delayMs = l <= 1000 ? Math.Max((int)l * 10, 10) : (int)l;
-                    return true;
-                case double d:
-                    delayMs = d <= 1000 ? Math.Max((int)(d * 10), 10) : (int)d;
-                    return true;
-                case float f:
-                    delayMs = f <= 1000 ? Math.Max((int)(f * 10), 10) : (int)f;
-                    return true;
+                case byte b: delayMs = Math.Max(b * 10, 10); return true;
+                case sbyte sb: delayMs = Math.Max(sb * 10, 10); return true;
+                case ushort us: delayMs = Math.Max(us * 10, 10); return true;
+                case short s: delayMs = Math.Max(s * 10, 10); return true;
+                case int i: delayMs = i <= 1000 ? Math.Max(i * 10, 10) : i; return true;
+                case long l: delayMs = l <= 1000 ? Math.Max((int)l * 10, 10) : (int)l; return true;
+                case double d: delayMs = d <= 1000 ? Math.Max((int)(d * 10), 10) : (int)d; return true;
+                case float f: delayMs = f <= 1000 ? Math.Max((int)(f * 10), 10) : (int)f; return true;
                 default:
-                    // try convertible
                     if (value is IConvertible)
                     {
                         try
@@ -219,13 +177,9 @@ namespace Jumpscare
                     }
                     break;
             }
-
             return false;
         }
 
-        /// <summary>
-        /// Lazy-load textures on the main thread.
-        /// </summary>
         public void EnsureTexturesLoaded()
         {
             if (texturesLoaded || framePaths.Count == 0)
@@ -248,29 +202,43 @@ namespace Jumpscare
 
         public void Update(float deltaMs)
         {
-            if (frames.Count == 0) return;
+            if (Finished || frames.Count == 0) return;
 
-            elapsedMs += deltaMs;
-            if (elapsedMs >= frames[currentFrame].DelayMs)
+            timeAccumulator += deltaMs;
+
+            if (timeAccumulator >= frames[currentFrame].DelayMs)
             {
-                elapsedMs -= frames[currentFrame].DelayMs; // subtract (not reset) to avoid time drift
-                currentFrame = (currentFrame + 1) % frames.Count;
+                timeAccumulator = 0f;
+                currentFrame++;
+
+                if (currentFrame >= frames.Count)
+                {
+                    currentFrame = frames.Count - 1; // stay on last frame
+                    Finished = true;
+                }
             }
         }
 
-        public void Render(Vector2 size)
+        public void Render(Vector2 size, float alpha = 1f)
         {
             if (frames.Count == 0) return;
 
-            var wrap = frames[currentFrame].Texture.GetWrapOrEmpty();
-            ImGui.Image(wrap.Handle, size);
+            var tex = frames[currentFrame].Texture;
+            if (tex == null) return;
+
+            var wrap = tex.GetWrapOrEmpty();
+            if (wrap == null) return;
+
+            ImGui.SetCursorPos(Vector2.Zero);
+            ImGui.Image(wrap.Handle, size, Vector2.Zero, Vector2.One,
+                        new Vector4(1f, 1f, 1f, alpha));
         }
+
 
         public void Dispose()
         {
             try
             {
-                // only delete temp files; do not dispose shared textures
                 foreach (var (path, _) in framePaths)
                     if (File.Exists(path))
                         File.Delete(path);

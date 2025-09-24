@@ -1,7 +1,5 @@
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Windowing;
-using Dalamud.Plugin;
-using Dalamud.Plugin.Ipc;
 using System;
 using System.IO;
 using System.Numerics;
@@ -13,10 +11,12 @@ public class MainWindow : Window, IDisposable
 {
     private readonly string imgPath;
     private GIFConvert? tongueGif;
+    private bool preloadStarted = false;
     private bool resourcesLoaded = false;
-    private bool preloadDone = false;
 
     private DateTime lastFrameTime;
+    private float fadeAlpha = 1f;
+    private bool preloadDone = false;
 
     // Delay handling
     private DateTime? triggerTime = null;
@@ -27,7 +27,7 @@ public class MainWindow : Window, IDisposable
     private Task? preloadTask;
 
     public MainWindow(string tongueImagePath)
-        : base("My Amazing Window##HiddenID",
+        : base("Jumpscare##HiddenID",
                ImGuiWindowFlags.NoTitleBar
              | ImGuiWindowFlags.NoScrollbar
              | ImGuiWindowFlags.NoDecoration
@@ -47,32 +47,44 @@ public class MainWindow : Window, IDisposable
         tongueGif?.Dispose();
     }
 
-    /// <summary>
-    /// Starts background GIF decoding and schedules texture creation on the main thread.
-    /// </summary>
-    private void StartPreload()
+    private void BeginPreload()
     {
-        if (preloadTask != null) return;
+        if (preloadStarted) return;
+        preloadStarted = true;
 
         preloadTask = Task.Run(() =>
         {
-            try
+            if (!File.Exists(imgPath))
             {
-                // Decode frames (CPU-heavy work)
-                var gif = new GIFConvert(imgPath);
-
-                // Schedule texture creation on the main thread
-                Plugin.Framework.RunOnFrameworkThread(() =>
-                {
-                    tongueGif = gif;
-                    tongueGif.EnsureTexturesLoaded(); // Texture creation must happen on main thread
-                    preloadDone = true;
-                    Plugin.Log.Information("GIF preloaded successfully.");
-                });
+                Plugin.Log.Error($"Image not found: {imgPath}");
+                resourcesLoaded = true;
+                return;
             }
-            catch (Exception ex)
+
+            if (Path.GetExtension(imgPath).Equals(".gif", StringComparison.OrdinalIgnoreCase))
             {
-                Plugin.Log.Error($"GIF preload failed: {ex}");
+                try
+                {
+                    var gif = new GIFConvert(imgPath);
+
+                    // Hand GIF back to main thread for texture creation
+                    Plugin.Framework.RunOnFrameworkThread(() =>
+                    {
+                        tongueGif = gif;
+                        tongueGif.EnsureTexturesLoaded();
+                        preloadDone = true;
+                    });
+
+                }
+                catch (Exception ex)
+                {
+                    Plugin.Log.Error($"GIF preload failed: {ex}");
+                    resourcesLoaded = true;
+                }
+            }
+            else
+            {
+                resourcesLoaded = true;
             }
         });
     }
@@ -82,7 +94,7 @@ public class MainWindow : Window, IDisposable
         if (!IsOpen)
         {
             // Schedule random delay
-            int seconds = rng.Next(10, 100); // 100–10000 seconds
+            int seconds = rng.Next(5, 10); // between 100 and 10000 seconds
             delay = TimeSpan.FromSeconds(seconds);
             triggerTime = DateTime.Now + delay;
 
@@ -90,7 +102,7 @@ public class MainWindow : Window, IDisposable
             IsOpen = true;
 
             // Start background GIF decode
-            StartPreload();
+            BeginPreload();
         }
         else
         {
@@ -114,11 +126,10 @@ public class MainWindow : Window, IDisposable
 
         if (!preloadDone)
         {
-            ImGui.TextUnformatted("Preparing jumpscare...");
-            return; // Don't render GIF until textures are ready
+            ImGui.TextUnformatted("Preparing jumpscare..."); return; // Don't render GIF until textures are ready
         }
 
-        Vector2 windowSize = ImGui.GetMainViewport().Size;
+            Vector2 windowSize = ImGui.GetMainViewport().Size;
         ImGui.SetNextWindowSize(windowSize, ImGuiCond.Always);
         ImGui.SetNextWindowPos(Vector2.Zero, ImGuiCond.Always);
 
@@ -139,9 +150,18 @@ public class MainWindow : Window, IDisposable
             lastFrameTime = now;
 
             tongueGif.Update(deltaMs);
-            tongueGif.Render(windowSize);
+
+            // Fade out last frame once finished
+            if (tongueGif.Finished && fadeAlpha > 0f)
+            {
+                fadeAlpha -= deltaMs / 1000f; // 1 second fade
+                if (fadeAlpha < 0f)
+                    fadeAlpha = 0f;
+            }
+
+            tongueGif.Render(windowSize, fadeAlpha);
         }
-        else
+        else if (resourcesLoaded)
         {
             ImGui.TextUnformatted($"Image not found or not a GIF: {imgPath}");
         }
