@@ -32,10 +32,17 @@ public sealed class Plugin : IDalamudPlugin
 
         var dllDir = PluginInterface.AssemblyLocation.Directory?.FullName
                      ?? PluginInterface.GetPluginConfigDirectory();
-        var imgPath = Path.Combine(dllDir, "Data", "foxy-jumpscare.gif");
+
+        // GIF path
+        var imgPath = Path.Combine(dllDir, "Data", "visual", "foxy-jumpscare.gif");
+
+        // WAV path
+        var soundPath = Path.Combine(dllDir, "Data", "audio", "foxy.wav");
 
         ConfigWindow = new ConfigWindow(this);
-        MainWindow = new MainWindow(imgPath);
+
+        // Pass both paths to MainWindow
+        MainWindow = new MainWindow(imgPath, soundPath);
 
         WindowSystem.AddWindow(ConfigWindow);
         WindowSystem.AddWindow(MainWindow);
@@ -51,6 +58,7 @@ public sealed class Plugin : IDalamudPlugin
 
         Log.Information($"===A cool log message from {PluginInterface.Manifest?.Name ?? "Unknown Plugin"}===");
     }
+
 
     public void Dispose()
     {

@@ -13,16 +13,19 @@ public class MainWindow : Window, IDisposable
     private GIFConvert? tongueGif;
     private bool preloadStarted = false;
     private bool resourcesLoaded = false;
-
-    private DateTime lastFrameTime;
     private bool preloadDone = false;
 
+    private DateTime lastFrameTime;
     private DateTime? triggerTime = null;
     private TimeSpan delay = TimeSpan.Zero;
     private readonly Random rng = new();
     private Task? preloadTask;
 
-    public MainWindow(string tongueImagePath)
+    private bool soundPlayed = false;
+
+    private readonly string? soundPath;
+
+    public MainWindow(string tongueImagePath, string? wavPath)
         : base("Jumpscare##HiddenID",
                ImGuiWindowFlags.NoTitleBar
              | ImGuiWindowFlags.NoScrollbar
@@ -33,10 +36,11 @@ public class MainWindow : Window, IDisposable
              | ImGuiWindowFlags.NoMouseInputs
              | ImGuiWindowFlags.NoBackground)
     {
-        Size = ImGui.GetMainViewport().Size;
         imgPath = tongueImagePath;
+        soundPath = wavPath;
         lastFrameTime = DateTime.Now;
     }
+
 
     public void Dispose() => tongueGif?.Dispose();
 
@@ -64,6 +68,7 @@ public class MainWindow : Window, IDisposable
                     {
                         tongueGif.EnsureTexturesLoaded();
                         preloadDone = true;
+                        resourcesLoaded = true;
                     });
                 }
                 catch (Exception ex)
@@ -72,21 +77,44 @@ public class MainWindow : Window, IDisposable
                     resourcesLoaded = true;
                 }
             }
-            else resourcesLoaded = true;
+            else
+            {
+                resourcesLoaded = true;
+            }
         });
+    }
+
+    private void ScheduleNextTrigger()
+    {
+        int seconds = rng.Next(10, 100); // Random delay between 10-100s
+        delay = TimeSpan.FromSeconds(seconds);
+        triggerTime = DateTime.Now + delay;
+        Plugin.Log.Information($"Next jumpscare scheduled in {seconds} seconds (at {triggerTime}).");
+    }
+
+    private void ResetGIF()
+    {
+        tongueGif?.Dispose();
+        tongueGif = null;
+        preloadStarted = false;
+        preloadDone = false;
+        resourcesLoaded = false;
+        triggerTime = null;
+
+        // Start preload again
+        BeginPreload();
+
+        // Schedule next random trigger
+        ScheduleNextTrigger();
     }
 
     public void Toggle()
     {
         if (!IsOpen)
         {
-            int seconds = rng.Next(10,100); //delay between 10 and 100 seconds
-            delay = TimeSpan.FromSeconds(seconds);
-            triggerTime = DateTime.Now + delay;
-
-            Plugin.Log.Information($"Jumpscare scheduled in {seconds} seconds (at {triggerTime}).");
             IsOpen = true;
             BeginPreload();
+            ScheduleNextTrigger();
         }
         else
         {
@@ -98,24 +126,6 @@ public class MainWindow : Window, IDisposable
 
     public override void Draw()
     {
-        if (!triggerTime.HasValue)
-            return;
-
-        // Wait until trigger time
-        if (DateTime.Now < triggerTime.Value)
-        {
-            var remaining = triggerTime.Value - DateTime.Now;
-            ImGui.TextUnformatted($"Waiting... {remaining.TotalSeconds:F1}s");
-            return;
-        }
-
-        // Wait until GIF textures are loaded
-        if (!preloadDone)
-        {
-            ImGui.TextUnformatted("Preparing jumpscare...");
-            return;
-        }
-
         Vector2 windowSize = ImGui.GetMainViewport().Size;
         ImGui.SetNextWindowSize(windowSize, ImGuiCond.Always);
         ImGui.SetNextWindowPos(Vector2.Zero, ImGuiCond.Always);
@@ -130,35 +140,61 @@ public class MainWindow : Window, IDisposable
                   | ImGuiWindowFlags.NoMouseInputs
                   | ImGuiWindowFlags.NoBackground);
 
+        // Wait until trigger time
+        if (!triggerTime.HasValue)
+        {
+            ImGui.End();
+            return;
+        }
+
+        if (DateTime.Now < triggerTime.Value)
+        {
+            var remaining = triggerTime.Value - DateTime.Now;
+            ImGui.TextUnformatted($"Waiting... {remaining.TotalSeconds:F1}s");
+            ImGui.End();
+            return;
+        }
+
+        // Wait until GIF textures are loaded
+        if (!preloadDone)
+        {
+            ImGui.TextUnformatted("Preparing jumpscare...");
+            ImGui.End();
+            return;
+        }
+
         if (tongueGif != null && tongueGif.FramePaths.Count > 0)
         {
             var now = DateTime.Now;
             float deltaMs = (float)(now - lastFrameTime).TotalMilliseconds;
             lastFrameTime = now;
 
-            // Update GIF
+            if (!soundPlayed && File.Exists(soundPath))
+            {
+                var player = new System.Media.SoundPlayer(soundPath);
+                player.Play(); // non-blocking
+                soundPlayed = true;
+            }
+
             tongueGif.Update(deltaMs);
 
-            // Handle fadeout after last frame, stop fade when alpha reaches 0
             float alpha = 1f;
             if (tongueGif.Finished)
             {
                 alpha = 1f - Math.Min(tongueGif.FadeTimer / tongueGif.FadeDurationMs, 1f);
                 if (alpha <= 0f)
                 {
-                    // Close window and dispose GIF
-                    tongueGif.Dispose();
-                    tongueGif = null;
-                    IsOpen = false;
-                    Plugin.Log.Information("Jumpscare window disposed after GIF finished and faded out.");
+                    ResetGIF();
+                    soundPlayed = false;
                     ImGui.End();
                     return;
                 }
             }
 
-            // Render GIF
             tongueGif.Render(windowSize, alpha);
         }
+
+
         else if (resourcesLoaded)
         {
             ImGui.TextUnformatted($"Image not found or not a GIF: {imgPath}");
