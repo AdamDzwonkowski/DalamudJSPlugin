@@ -32,7 +32,7 @@ public sealed class Plugin : IDalamudPlugin
 
         var dllDir = PluginInterface.AssemblyLocation.Directory?.FullName
                      ?? PluginInterface.GetPluginConfigDirectory();
-        var imgPath = Path.Combine(dllDir, "Data", "1758028660865.gif");
+        var imgPath = Path.Combine(dllDir, "Data", "foxy-jumpscare.gif");
 
         ConfigWindow = new ConfigWindow(this);
         MainWindow = new MainWindow(imgPath);
