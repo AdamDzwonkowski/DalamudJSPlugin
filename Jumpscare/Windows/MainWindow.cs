@@ -1,5 +1,8 @@
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Windowing;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
 using System;
 using System.IO;
 using System.Numerics;
@@ -9,8 +12,13 @@ namespace Jumpscare.Windows;
 
 public class MainWindow : Window, IDisposable
 {
-    private readonly string imgPath;
+    private readonly object reloadLock = new();
+
+    private string imgPath;
+    private string? soundPath;
+
     private GIFConvert? tongueGif;
+
     private bool preloadStarted = false;
     private bool resourcesLoaded = false;
     private bool preloadDone = false;
@@ -23,9 +31,7 @@ public class MainWindow : Window, IDisposable
 
     private bool soundPlayed = false;
 
-    private readonly string? soundPath;
-
-    public MainWindow(string tongueImagePath, string? wavPath)
+    public MainWindow(string imagePath, string? wavPath)
         : base("Jumpscare##HiddenID",
                ImGuiWindowFlags.NoTitleBar
              | ImGuiWindowFlags.NoScrollbar
@@ -36,13 +42,37 @@ public class MainWindow : Window, IDisposable
              | ImGuiWindowFlags.NoMouseInputs
              | ImGuiWindowFlags.NoBackground)
     {
-        imgPath = tongueImagePath;
+        imgPath = imagePath;
         soundPath = wavPath;
         lastFrameTime = DateTime.Now;
     }
 
-
     public void Dispose() => tongueGif?.Dispose();
+
+    public void Reload(string newImgPath, string? newSoundPath)
+    {
+        lock (reloadLock)
+        {
+            Plugin.Log.Information($"Reloading jumpscare with {newImgPath}, {newSoundPath}");
+            StopPlayback();
+
+            tongueGif?.Dispose();
+            tongueGif = null;
+
+            preloadStarted = false;
+            preloadDone = false;
+            resourcesLoaded = false;
+            soundPlayed = false;
+
+            imgPath = newImgPath;
+            soundPath = newSoundPath;
+
+            BeginPreload();
+            ScheduleNextTrigger();
+        }
+    }
+
+    private void StopPlayback() => triggerTime = null;
 
     private void BeginPreload()
     {
@@ -58,27 +88,35 @@ public class MainWindow : Window, IDisposable
                 return;
             }
 
-            if (Path.GetExtension(imgPath).Equals(".gif", StringComparison.OrdinalIgnoreCase))
+            var ext = Path.GetExtension(imgPath).ToLowerInvariant();
+
+            try
             {
-                try
+                // --- GIFs ---
+                if (ext == ".gif")
                 {
                     tongueGif = new GIFConvert(imgPath);
-
-                    Plugin.Framework.RunOnFrameworkThread(() =>
-                    {
-                        tongueGif.EnsureTexturesLoaded();
-                        preloadDone = true;
-                        resourcesLoaded = true;
-                    });
                 }
-                catch (Exception ex)
+                else
                 {
-                    Plugin.Log.Error($"GIF preload failed: {ex}");
-                    resourcesLoaded = true;
+                    // --- Static PNG/JPG as single-frame GIFConvert ---
+                    using var img = Image.Load<Rgba32>(imgPath);
+                    string tempGif = Path.Combine(Path.GetTempPath(), $"single_frame_{Guid.NewGuid()}.gif");
+
+                    img.SaveAsGif(tempGif); // Save as a single-frame GIF
+                    tongueGif = new GIFConvert(tempGif);
                 }
+
+                Plugin.Framework.RunOnFrameworkThread(() =>
+                {
+                    tongueGif?.EnsureTexturesLoaded();
+                    preloadDone = true;
+                    resourcesLoaded = true;
+                });
             }
-            else
+            catch (Exception ex)
             {
+                Plugin.Log.Error($"Preload failed: {ex}");
                 resourcesLoaded = true;
             }
         });
@@ -86,26 +124,28 @@ public class MainWindow : Window, IDisposable
 
     private void ScheduleNextTrigger()
     {
-        int seconds = rng.Next(10, 100); // Random delay between 10-100s
+        int seconds = rng.Next(10, 100);
         delay = TimeSpan.FromSeconds(seconds);
         triggerTime = DateTime.Now + delay;
         Plugin.Log.Information($"Next jumpscare scheduled in {seconds} seconds (at {triggerTime}).");
     }
 
-    private void ResetGIF()
+    private void ResetPlayback()
     {
-        tongueGif?.Dispose();
-        tongueGif = null;
-        preloadStarted = false;
-        preloadDone = false;
-        resourcesLoaded = false;
-        triggerTime = null;
+        lock (reloadLock)
+        {
+            tongueGif?.Dispose();
+            tongueGif = null;
 
-        // Start preload again
-        BeginPreload();
+            preloadStarted = false;
+            preloadDone = false;
+            resourcesLoaded = false;
+            triggerTime = null;
+            soundPlayed = false;
 
-        // Schedule next random trigger
-        ScheduleNextTrigger();
+            BeginPreload();
+            ScheduleNextTrigger();
+        }
     }
 
     public void Toggle()
@@ -131,16 +171,15 @@ public class MainWindow : Window, IDisposable
         ImGui.SetNextWindowPos(Vector2.Zero, ImGuiCond.Always);
 
         ImGui.Begin("MainWindow",
-                    ImGuiWindowFlags.NoScrollbar
-                  | ImGuiWindowFlags.NoTitleBar
-                  | ImGuiWindowFlags.NoDecoration
-                  | ImGuiWindowFlags.NoFocusOnAppearing
-                  | ImGuiWindowFlags.NoNavFocus
-                  | ImGuiWindowFlags.NoInputs
-                  | ImGuiWindowFlags.NoMouseInputs
-                  | ImGuiWindowFlags.NoBackground);
+            ImGuiWindowFlags.NoScrollbar
+          | ImGuiWindowFlags.NoTitleBar
+          | ImGuiWindowFlags.NoDecoration
+          | ImGuiWindowFlags.NoFocusOnAppearing
+          | ImGuiWindowFlags.NoNavFocus
+          | ImGuiWindowFlags.NoInputs
+          | ImGuiWindowFlags.NoMouseInputs
+          | ImGuiWindowFlags.NoBackground);
 
-        // Wait until trigger time
         if (!triggerTime.HasValue)
         {
             ImGui.End();
@@ -155,7 +194,6 @@ public class MainWindow : Window, IDisposable
             return;
         }
 
-        // Wait until GIF textures are loaded
         if (!preloadDone)
         {
             ImGui.TextUnformatted("Preparing jumpscare...");
@@ -169,12 +207,7 @@ public class MainWindow : Window, IDisposable
             float deltaMs = (float)(now - lastFrameTime).TotalMilliseconds;
             lastFrameTime = now;
 
-            if (!soundPlayed && File.Exists(soundPath))
-            {
-                var player = new System.Media.SoundPlayer(soundPath);
-                player.Play(); // non-blocking
-                soundPlayed = true;
-            }
+            PlaySoundOnce();
 
             tongueGif.Update(deltaMs);
 
@@ -184,8 +217,7 @@ public class MainWindow : Window, IDisposable
                 alpha = 1f - Math.Min(tongueGif.FadeTimer / tongueGif.FadeDurationMs, 1f);
                 if (alpha <= 0f)
                 {
-                    ResetGIF();
-                    soundPlayed = false;
+                    ResetPlayback();
                     ImGui.End();
                     return;
                 }
@@ -193,13 +225,28 @@ public class MainWindow : Window, IDisposable
 
             tongueGif.Render(windowSize, alpha);
         }
-
-
         else if (resourcesLoaded)
         {
-            ImGui.TextUnformatted($"Image not found or not a GIF: {imgPath}");
+            ImGui.TextUnformatted($"Image not found or unsupported: {imgPath}");
         }
 
         ImGui.End();
+    }
+
+    private void PlaySoundOnce()
+    {
+        if (!soundPlayed && soundPath != null && File.Exists(soundPath))
+        {
+            try
+            {
+                var player = new System.Media.SoundPlayer(soundPath);
+                player.Play();
+                soundPlayed = true;
+            }
+            catch (Exception ex)
+            {
+                Plugin.Log.Error($"Failed to play sound {soundPath}: {ex}");
+            }
+        }
     }
 }

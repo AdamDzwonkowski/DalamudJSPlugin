@@ -24,7 +24,7 @@ public sealed class Plugin : IDalamudPlugin
 
     public readonly WindowSystem WindowSystem = new("Jumpscare");
     private ConfigWindow ConfigWindow { get; init; }
-    private MainWindow MainWindow { get; init; }
+    public MainWindow MainWindow { get; private set; }
 
     public Plugin()
     {
@@ -32,16 +32,10 @@ public sealed class Plugin : IDalamudPlugin
 
         var dllDir = PluginInterface.AssemblyLocation.Directory?.FullName
                      ?? PluginInterface.GetPluginConfigDirectory();
-
-        // GIF path
-        var imgPath = Path.Combine(dllDir, "Data", "visual", "foxy-jumpscare.gif");
-
-        // WAV path
-        var soundPath = Path.Combine(dllDir, "Data", "audio", "foxy.wav");
+        var imgPath = Path.Combine(dllDir, "Data", Configuration.SelectedImage);
+        var soundPath = Path.Combine(dllDir, "Data", Configuration.SelectedSound);
 
         ConfigWindow = new ConfigWindow(this);
-
-        // Pass both paths to MainWindow
         MainWindow = new MainWindow(imgPath, soundPath);
 
         WindowSystem.AddWindow(ConfigWindow);
@@ -59,14 +53,12 @@ public sealed class Plugin : IDalamudPlugin
         Log.Information($"===A cool log message from {PluginInterface.Manifest?.Name ?? "Unknown Plugin"}===");
     }
 
-
     public void Dispose()
     {
-        // Unregister all actions to not leak anything during disposal of plugin
         PluginInterface.UiBuilder.Draw -= WindowSystem.Draw;
         PluginInterface.UiBuilder.OpenConfigUi -= ToggleConfigUi;
         PluginInterface.UiBuilder.OpenMainUi -= ToggleMainUi;
-        
+
         WindowSystem.RemoveAllWindows();
 
         ConfigWindow.Dispose();
@@ -77,10 +69,9 @@ public sealed class Plugin : IDalamudPlugin
 
     private void OnCommand(string command, string args)
     {
-        // In response to the slash command, toggle the display status of our main ui
         MainWindow.Toggle();
     }
-    
+
     public void ToggleConfigUi() => ConfigWindow.Toggle();
     public void ToggleMainUi() => MainWindow.Toggle();
 }
