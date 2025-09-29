@@ -37,25 +37,30 @@ public class ConfigWindow : Window, IDisposable
     {
         // --- Status indicator ---
         if (plugin.MainWindow.IsRunning)
-        {
             ImGui.TextColored(new Vector4(0f, 1f, 0f, 1f), "Jumpscare timer is ACTIVE");
-        }
         else
-        {
             ImGui.TextColored(new Vector4(1f, 0f, 0f, 1f), "Jumpscare timer is INACTIVE");
-        }
+
         ImGui.Separator();
         ImGui.Text("Changing Settings resets the timer");
+
+        bool reloadNeeded = false;
+
         // --- Images ---
         var selectedImage = configuration.SelectedImage;
         DrawSelection("Image", configuration.ImageOptions, ref selectedImage, ref newImagePath);
-        configuration.SelectedImage = selectedImage;
+        if (configuration.SelectedImage != selectedImage)
+        {
+            configuration.SelectedImage = selectedImage;
+            configuration.Save();
+            reloadNeeded = true;
+        }
 
-        // Reset images button
         if (ImGui.Button("Reset Images to Defaults"))
         {
             configuration.ResetImageOptions();
-            ReloadMedia();
+            configuration.Save();
+            reloadNeeded = true;
         }
 
         ImGui.Separator();
@@ -63,14 +68,22 @@ public class ConfigWindow : Window, IDisposable
         // --- Sounds ---
         var selectedSound = configuration.SelectedSound;
         DrawSelection("Sound", configuration.SoundOptions, ref selectedSound, ref newSoundPath);
-        configuration.SelectedSound = selectedSound;
+        if (configuration.SelectedSound != selectedSound)
+        {
+            configuration.SelectedSound = selectedSound;
+            configuration.Save();
+            reloadNeeded = true;
+        }
 
-        // Reset sounds button
         if (ImGui.Button("Reset Sounds to Defaults"))
         {
             configuration.ResetSoundOptions();
-            ReloadMedia();
+            configuration.Save();
+            reloadNeeded = true;
         }
+
+        if (reloadNeeded)
+            ReloadMedia();
 
         ImGui.Separator();
         ImGui.Text("Randomization");
@@ -81,7 +94,8 @@ public class ConfigWindow : Window, IDisposable
             configuration.RandomizeImages = randomizeImages;
             configuration.Save();
 
-            // Reset timer so new setting takes effect
+            var paths = ResolveCurrentMediaPaths();
+            plugin.MainWindow.Reload(paths.imagePath, paths.soundPath);
             plugin.MainWindow.ResetPlayback();
         }
 
@@ -91,15 +105,14 @@ public class ConfigWindow : Window, IDisposable
             configuration.RandomizeSounds = randomizeSounds;
             configuration.Save();
 
-            // Reset timer so new setting takes effect
+            var paths = ResolveCurrentMediaPaths();
+            plugin.MainWindow.Reload(paths.imagePath, paths.soundPath);
             plugin.MainWindow.ResetPlayback();
         }
-
 
         ImGui.Separator();
         ImGui.Text("Trigger Timing");
 
-        // Min seconds
         int minSecs = configuration.MinTriggerSeconds;
         if (ImGui.InputInt("Min Seconds (10)", ref minSecs))
         {
@@ -107,13 +120,28 @@ public class ConfigWindow : Window, IDisposable
             configuration.Save();
         }
 
-        // Max seconds
         int maxSecs = configuration.MaxTriggerSeconds;
         if (ImGui.InputInt("Max Seconds (100000)", ref maxSecs))
         {
             configuration.MaxTriggerSeconds = Math.Clamp(maxSecs, configuration.MinTriggerSeconds + 1, 100000);
             configuration.Save();
         }
+    }
+
+    private (string imagePath, string soundPath) ResolveCurrentMediaPaths()
+    {
+        string baseDir = Plugin.PluginInterface.AssemblyLocation.Directory?.FullName
+                         ?? Plugin.PluginInterface.GetPluginConfigDirectory();
+
+        string imgPath = configuration.RandomizeImages && configuration.ImageOptions.Count > 0
+            ? Path.Combine(baseDir, "Data", configuration.ImageOptions[new Random().Next(configuration.ImageOptions.Count)])
+            : Path.Combine(baseDir, "Data", configuration.SelectedImage);
+
+        string sndPath = configuration.RandomizeSounds && configuration.SoundOptions.Count > 0
+            ? Path.Combine(baseDir, "Data", configuration.SoundOptions[new Random().Next(configuration.SoundOptions.Count)])
+            : Path.Combine(baseDir, "Data", configuration.SelectedSound);
+
+        return (imgPath, sndPath);
     }
 
     private void DrawSelection(string label, System.Collections.Generic.List<string> options, ref string selectedOption, ref string newPathBuffer)
@@ -132,7 +160,6 @@ public class ConfigWindow : Window, IDisposable
                     configuration.Save();
                     ReloadMedia();
                 }
-
                 if (isSelected)
                     ImGui.SetItemDefaultFocus();
             }
@@ -155,11 +182,7 @@ public class ConfigWindow : Window, IDisposable
 
     private void ReloadMedia()
     {
-        var dllDir = Plugin.PluginInterface.AssemblyLocation.Directory?.FullName
-                     ?? Plugin.PluginInterface.GetPluginConfigDirectory();
-        var imgPath = Path.Combine(dllDir, "Data", configuration.SelectedImage);
-        var soundPath = Path.Combine(dllDir, "Data", configuration.SelectedSound);
-
-        plugin.MainWindow.Reload(imgPath, soundPath);
+        var paths = ResolveCurrentMediaPaths();
+        plugin.MainWindow.Reload(paths.imagePath, paths.soundPath);
     }
 }

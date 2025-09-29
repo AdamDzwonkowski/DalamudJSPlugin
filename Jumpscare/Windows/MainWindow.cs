@@ -17,7 +17,7 @@ public class MainWindow : Window, IDisposable
     private string imgPath;
     private string? soundPath;
 
-    private GIFConvert? tongueGif;
+    private GIFConvert? GIF;
 
     private bool preloadStarted = false;
     private bool resourcesLoaded = false;
@@ -53,7 +53,7 @@ public class MainWindow : Window, IDisposable
         lastFrameTime = DateTime.Now;
     }
 
-    public void Dispose() => tongueGif?.Dispose();
+    public void Dispose() => GIF?.Dispose();
 
     public void Reload(string newImgPath, string? newSoundPath)
     {
@@ -62,8 +62,8 @@ public class MainWindow : Window, IDisposable
             Plugin.Log.Information($"Reloading jumpscare with {newImgPath}, {newSoundPath}");
             StopPlayback();
 
-            tongueGif?.Dispose();
-            tongueGif = null;
+            GIF?.Dispose();
+            GIF = null;
 
             preloadStarted = false;
             preloadDone = false;
@@ -101,7 +101,7 @@ public class MainWindow : Window, IDisposable
                 // --- GIFs ---
                 if (ext == ".gif")
                 {
-                    tongueGif = new GIFConvert(imgPath);
+                    GIF = new GIFConvert(imgPath);
                 }
                 else
                 {
@@ -110,12 +110,12 @@ public class MainWindow : Window, IDisposable
                     string tempGif = Path.Combine(Path.GetTempPath(), $"single_frame_{Guid.NewGuid()}.gif");
 
                     img.SaveAsGif(tempGif); // Save as a single-frame GIF
-                    tongueGif = new GIFConvert(tempGif);
+                    GIF = new GIFConvert(tempGif);
                 }
 
                 Plugin.Framework.RunOnFrameworkThread(() =>
                 {
-                    tongueGif?.EnsureTexturesLoaded();
+                    GIF?.EnsureTexturesLoaded();
                     preloadDone = true;
                     resourcesLoaded = true;
                 });
@@ -148,8 +148,8 @@ public class MainWindow : Window, IDisposable
     {
         lock (reloadLock)
         {
-            tongueGif?.Dispose();
-            tongueGif = null;
+            GIF?.Dispose();
+            GIF = null;
 
             preloadStarted = false;
             preloadDone = false;
@@ -242,7 +242,7 @@ public class MainWindow : Window, IDisposable
             return;
         }
 
-        if (tongueGif != null && tongueGif.FramePaths.Count > 0)
+        if (GIF != null && GIF.FramePaths.Count > 0)
         {
             var now = DateTime.Now;
             float deltaMs = (float)(now - lastFrameTime).TotalMilliseconds;
@@ -250,12 +250,12 @@ public class MainWindow : Window, IDisposable
 
             PlaySoundOnce();
 
-            tongueGif.Update(deltaMs);
+            GIF.Update(deltaMs);
 
             float alpha = 1f;
-            if (tongueGif.Finished)
+            if (GIF.Finished)
             {
-                alpha = 1f - Math.Min(tongueGif.FadeTimer / tongueGif.FadeDurationMs, 1f);
+                alpha = 1f - Math.Min(GIF.FadeTimer / GIF.FadeDurationMs, 1f);
                 if (alpha <= 0f)
                 {
                     ResetPlayback();
@@ -264,7 +264,7 @@ public class MainWindow : Window, IDisposable
                 }
             }
 
-            tongueGif.Render(windowSize, alpha);
+            GIF.Render(windowSize, alpha);
         }
         else if (resourcesLoaded)
         {

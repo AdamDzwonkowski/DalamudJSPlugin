@@ -28,16 +28,18 @@ public class Configuration : IPluginConfiguration
 
     private static readonly string[] DefaultImages =
     {
-        "visual/1758028660865.gif",
         "visual/foxy-jumpscare.gif",
-        "visual/profile.png"
+        "visual/lick.gif",
+        "visual/don.gif",
     };
 
     private static readonly string[] DefaultSounds =
     {
-        "audio/apocbird.wav",
         "audio/foxy.wav",
-        "audio/pikmin.wav"
+        "audio/apocbird.wav",
+        "audio/pikmin.wav",
+        "audio/pipe.wav",
+        "audio/don.wav"
     };
 
     public void EnsureDefaults()
