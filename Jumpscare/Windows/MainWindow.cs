@@ -26,11 +26,15 @@ public class MainWindow : Window, IDisposable
     private DateTime lastFrameTime;
     private DateTime? triggerTime = null;
     private TimeSpan delay = TimeSpan.Zero;
+
     private readonly Random rng = new();
     private Task? preloadTask;
 
     private bool soundPlayed = false;
     private readonly Configuration config;
+
+    private bool isRunning = false; // ⬅ Tracks whether /jumpscare is active
+    public bool IsRunning => isRunning && triggerTime.HasValue && DateTime.Now < triggerTime.Value;
 
     public MainWindow(string imagePath, string? wavPath, Configuration config)
         : base("Jumpscare##HiddenID",
@@ -70,7 +74,7 @@ public class MainWindow : Window, IDisposable
             soundPath = newSoundPath;
 
             BeginPreload();
-            ScheduleNextTrigger();
+            if (isRunning) ScheduleNextTrigger();
         }
     }
 
@@ -126,10 +130,9 @@ public class MainWindow : Window, IDisposable
 
     private void ScheduleNextTrigger()
     {
-        int min = config.MinTriggerSeconds;
-        int max = config.MaxTriggerSeconds;
+        int min = Math.Clamp(config.MinTriggerSeconds, 10, 100000);
+        int max = Math.Clamp(config.MaxTriggerSeconds, 10, 100000);
 
-        if (min < 1) min = 1;
         if (max <= min) max = min + 1;
 
         int seconds = rng.Next(min, max + 1);
@@ -141,8 +144,7 @@ public class MainWindow : Window, IDisposable
         );
     }
 
-
-    private void ResetPlayback()
+    public void ResetPlayback()
     {
         lock (reloadLock)
         {
@@ -155,7 +157,7 @@ public class MainWindow : Window, IDisposable
             triggerTime = null;
             soundPlayed = false;
 
-            // 🎲 Randomize selection
+            // 🎲 Randomize selection only if enabled
             if (config.RandomizeImages && config.ImageOptions.Count > 0)
             {
                 var idx = rng.Next(config.ImageOptions.Count);
@@ -181,7 +183,7 @@ public class MainWindow : Window, IDisposable
             }
 
             BeginPreload();
-            ScheduleNextTrigger();
+            if (isRunning) ScheduleNextTrigger(); // Only schedule if user started /jumpscare
         }
     }
 
@@ -190,6 +192,7 @@ public class MainWindow : Window, IDisposable
         if (!IsOpen)
         {
             IsOpen = true;
+            isRunning = true; // mark as running
             BeginPreload();
             ScheduleNextTrigger();
         }
@@ -197,6 +200,7 @@ public class MainWindow : Window, IDisposable
         {
             Plugin.Log.Information("Jumpscare cancelled.");
             triggerTime = null;
+            isRunning = false; // mark as stopped
             IsOpen = false;
         }
     }

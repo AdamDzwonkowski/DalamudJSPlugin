@@ -19,6 +19,9 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] internal static IFramework Framework { get; private set; } = null!;
 
     private const string CommandName = "/jumpscare";
+    private const string CommandAlias = "/js";
+    private const string ConfigCommandName = "/jumpscarecfg";
+    private const string ConfigCommandAlias = "/jscfg";
 
     public Configuration Configuration { get; init; }
 
@@ -44,14 +47,24 @@ public sealed class Plugin : IDalamudPlugin
 
         CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
         {
-            HelpMessage = "A useful message to display in /xlhelp"
+            HelpMessage = "Start/stop jumpscare timer"
+        });
+        CommandManager.AddHandler(CommandAlias, new CommandInfo(OnCommand)
+        {
+            HelpMessage = "Alias for /jumpscare"
+        });
+        CommandManager.AddHandler(ConfigCommandName, new CommandInfo(OnConfigCommand)
+        {
+            HelpMessage = "Open the jumpscare configuration window"
+        });
+        CommandManager.AddHandler(ConfigCommandAlias, new CommandInfo(OnConfigCommand)
+        {
+            HelpMessage = "Alias for /jumpscarecfg"
         });
 
         PluginInterface.UiBuilder.Draw += WindowSystem.Draw;
         PluginInterface.UiBuilder.OpenConfigUi += ToggleConfigUi;
         PluginInterface.UiBuilder.OpenMainUi += ToggleMainUi;
-
-        Log.Information($"===A cool log message from {PluginInterface.Manifest?.Name ?? "Unknown Plugin"}===");
     }
 
     public void Dispose()
@@ -66,11 +79,18 @@ public sealed class Plugin : IDalamudPlugin
         MainWindow.Dispose();
 
         CommandManager.RemoveHandler(CommandName);
+        CommandManager.RemoveHandler(CommandAlias);
+        CommandManager.RemoveHandler(ConfigCommandName);
+        CommandManager.RemoveHandler(ConfigCommandAlias);
     }
 
     private void OnCommand(string command, string args)
     {
         MainWindow.Toggle();
+    }
+    private void OnConfigCommand(string command, string args)
+    {
+        ConfigWindow.Toggle();
     }
 
     public void ToggleConfigUi() => ConfigWindow.Toggle();

@@ -1,5 +1,6 @@
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Windowing;
+using FFXIVClientStructs.FFXIV.Common.Math;
 using System;
 using System.IO;
 
@@ -34,6 +35,17 @@ public class ConfigWindow : Window, IDisposable
 
     public override void Draw()
     {
+        // --- Status indicator ---
+        if (plugin.MainWindow.IsRunning)
+        {
+            ImGui.TextColored(new Vector4(0f, 1f, 0f, 1f), "Jumpscare timer is ACTIVE");
+        }
+        else
+        {
+            ImGui.TextColored(new Vector4(1f, 0f, 0f, 1f), "Jumpscare timer is INACTIVE");
+        }
+        ImGui.Separator();
+        ImGui.Text("Changing Settings resets the timer");
         // --- Images ---
         var selectedImage = configuration.SelectedImage;
         DrawSelection("Image", configuration.ImageOptions, ref selectedImage, ref newImagePath);
@@ -63,19 +75,26 @@ public class ConfigWindow : Window, IDisposable
         ImGui.Separator();
         ImGui.Text("Randomization");
 
-        bool randomImages = configuration.RandomizeImages;
-        if (ImGui.Checkbox("Randomize Images", ref randomImages))
+        bool randomizeImages = configuration.RandomizeImages;
+        if (ImGui.Checkbox("Randomize Images", ref randomizeImages))
         {
-            configuration.RandomizeImages = randomImages;
+            configuration.RandomizeImages = randomizeImages;
             configuration.Save();
+
+            // Reset timer so new setting takes effect
+            plugin.MainWindow.ResetPlayback();
         }
 
-        bool randomSounds = configuration.RandomizeSounds;
-        if (ImGui.Checkbox("Randomize Sounds", ref randomSounds))
+        bool randomizeSounds = configuration.RandomizeSounds;
+        if (ImGui.Checkbox("Randomize Sounds", ref randomizeSounds))
         {
-            configuration.RandomizeSounds = randomSounds;
+            configuration.RandomizeSounds = randomizeSounds;
             configuration.Save();
+
+            // Reset timer so new setting takes effect
+            plugin.MainWindow.ResetPlayback();
         }
+
 
         ImGui.Separator();
         ImGui.Text("Trigger Timing");

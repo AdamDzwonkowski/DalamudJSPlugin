@@ -37,7 +37,7 @@ public class Configuration : IPluginConfiguration
     {
         "audio/apocbird.wav",
         "audio/foxy.wav",
-        "audio/scream.mp3"
+        "audio/pikmin.wav"
     };
 
     public void EnsureDefaults()
