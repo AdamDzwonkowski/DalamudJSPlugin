@@ -29,6 +29,7 @@ public sealed class Plugin : IDalamudPlugin
     public Plugin()
     {
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
+        Configuration.EnsureDefaults();
 
         var dllDir = PluginInterface.AssemblyLocation.Directory?.FullName
                      ?? PluginInterface.GetPluginConfigDirectory();
@@ -36,7 +37,7 @@ public sealed class Plugin : IDalamudPlugin
         var soundPath = Path.Combine(dllDir, "Data", Configuration.SelectedSound);
 
         ConfigWindow = new ConfigWindow(this);
-        MainWindow = new MainWindow(imgPath, soundPath);
+        MainWindow = new MainWindow(imgPath, soundPath, Configuration);
 
         WindowSystem.AddWindow(ConfigWindow);
         WindowSystem.AddWindow(MainWindow);

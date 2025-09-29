@@ -30,8 +30,9 @@ public class MainWindow : Window, IDisposable
     private Task? preloadTask;
 
     private bool soundPlayed = false;
+    private readonly Configuration config;
 
-    public MainWindow(string imagePath, string? wavPath)
+    public MainWindow(string imagePath, string? wavPath, Configuration config)
         : base("Jumpscare##HiddenID",
                ImGuiWindowFlags.NoTitleBar
              | ImGuiWindowFlags.NoScrollbar
@@ -44,6 +45,7 @@ public class MainWindow : Window, IDisposable
     {
         imgPath = imagePath;
         soundPath = wavPath;
+        this.config = config;
         lastFrameTime = DateTime.Now;
     }
 
@@ -124,11 +126,21 @@ public class MainWindow : Window, IDisposable
 
     private void ScheduleNextTrigger()
     {
-        int seconds = rng.Next(10, 100);
+        int min = config.MinTriggerSeconds;
+        int max = config.MaxTriggerSeconds;
+
+        if (min < 1) min = 1;
+        if (max <= min) max = min + 1;
+
+        int seconds = rng.Next(min, max + 1);
         delay = TimeSpan.FromSeconds(seconds);
         triggerTime = DateTime.Now + delay;
-        Plugin.Log.Information($"Next jumpscare scheduled in {seconds} seconds (at {triggerTime}).");
+
+        Plugin.Log.Information(
+            $"Next jumpscare scheduled in {seconds} seconds (range {min}-{max}) at {triggerTime}."
+        );
     }
+
 
     private void ResetPlayback()
     {
@@ -142,6 +154,31 @@ public class MainWindow : Window, IDisposable
             resourcesLoaded = false;
             triggerTime = null;
             soundPlayed = false;
+
+            // 🎲 Randomize selection
+            if (config.RandomizeImages && config.ImageOptions.Count > 0)
+            {
+                var idx = rng.Next(config.ImageOptions.Count);
+                imgPath = Path.Combine(
+                    Plugin.PluginInterface.AssemblyLocation.Directory?.FullName
+                    ?? Plugin.PluginInterface.GetPluginConfigDirectory(),
+                    "Data",
+                    config.ImageOptions[idx]
+                );
+                Plugin.Log.Information($"Randomized image -> {imgPath}");
+            }
+
+            if (config.RandomizeSounds && config.SoundOptions.Count > 0)
+            {
+                var idx = rng.Next(config.SoundOptions.Count);
+                soundPath = Path.Combine(
+                    Plugin.PluginInterface.AssemblyLocation.Directory?.FullName
+                    ?? Plugin.PluginInterface.GetPluginConfigDirectory(),
+                    "Data",
+                    config.SoundOptions[idx]
+                );
+                Plugin.Log.Information($"Randomized sound -> {soundPath}");
+            }
 
             BeginPreload();
             ScheduleNextTrigger();

@@ -2,7 +2,6 @@ using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Windowing;
 using System;
 using System.IO;
-using System.Numerics;
 
 namespace Jumpscare.Windows;
 
@@ -11,12 +10,12 @@ public class ConfigWindow : Window, IDisposable
     private readonly Configuration configuration;
     private readonly Plugin plugin;
 
-    public ConfigWindow(Plugin plugin) : base("Configuration###With a constant ID")
-    {
-        Flags = ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar |
-                ImGuiWindowFlags.NoScrollWithMouse;
+    private string newImagePath = "";
+    private string newSoundPath = "";
 
-        Size = new Vector2(300, 180);
+    public ConfigWindow(Plugin plugin) : base("Configuration###WithConstantID")
+    {
+        Flags = ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse;
         SizeCondition = ImGuiCond.Always;
 
         this.plugin = plugin;
@@ -35,50 +34,84 @@ public class ConfigWindow : Window, IDisposable
 
     public override void Draw()
     {
-        // Example checkboxes
-        var configValue = configuration.SomePropertyToBeSavedAndWithADefault;
-        if (ImGui.Checkbox("Random Config Bool", ref configValue))
-        {
-            configuration.SomePropertyToBeSavedAndWithADefault = configValue;
-            configuration.Save();
-        }
+        // --- Images ---
+        var selectedImage = configuration.SelectedImage;
+        DrawSelection("Image", configuration.ImageOptions, ref selectedImage, ref newImagePath);
+        configuration.SelectedImage = selectedImage;
 
-        var movable = configuration.IsConfigWindowMovable;
-        if (ImGui.Checkbox("Movable Config Window", ref movable))
+        // Reset images button
+        if (ImGui.Button("Reset Images to Defaults"))
         {
-            configuration.IsConfigWindowMovable = movable;
-            configuration.Save();
+            configuration.ResetImageOptions();
+            ReloadMedia();
         }
 
         ImGui.Separator();
 
-        // === Image selection ===
-        string[] imageOptions =
-        {
-            "visual/1758028660865.gif",
-            "visual/foxy-jumpscare.gif",
-            "visual/profile.png"
-        };
+        // --- Sounds ---
+        var selectedSound = configuration.SelectedSound;
+        DrawSelection("Sound", configuration.SoundOptions, ref selectedSound, ref newSoundPath);
+        configuration.SelectedSound = selectedSound;
 
-        int currentImageIndex = Array.IndexOf(imageOptions, configuration.SelectedImage);
-        if (currentImageIndex < 0) currentImageIndex = 0;
-
-        if (ImGui.BeginCombo("Image", imageOptions[currentImageIndex]))
+        // Reset sounds button
+        if (ImGui.Button("Reset Sounds to Defaults"))
         {
-            for (int i = 0; i < imageOptions.Length; i++)
+            configuration.ResetSoundOptions();
+            ReloadMedia();
+        }
+
+        ImGui.Separator();
+        ImGui.Text("Randomization");
+
+        bool randomImages = configuration.RandomizeImages;
+        if (ImGui.Checkbox("Randomize Images", ref randomImages))
+        {
+            configuration.RandomizeImages = randomImages;
+            configuration.Save();
+        }
+
+        bool randomSounds = configuration.RandomizeSounds;
+        if (ImGui.Checkbox("Randomize Sounds", ref randomSounds))
+        {
+            configuration.RandomizeSounds = randomSounds;
+            configuration.Save();
+        }
+
+        ImGui.Separator();
+        ImGui.Text("Trigger Timing");
+
+        // Min seconds
+        int minSecs = configuration.MinTriggerSeconds;
+        if (ImGui.InputInt("Min Seconds (10)", ref minSecs))
+        {
+            configuration.MinTriggerSeconds = Math.Clamp(minSecs, 10, 100000);
+            configuration.Save();
+        }
+
+        // Max seconds
+        int maxSecs = configuration.MaxTriggerSeconds;
+        if (ImGui.InputInt("Max Seconds (100000)", ref maxSecs))
+        {
+            configuration.MaxTriggerSeconds = Math.Clamp(maxSecs, configuration.MinTriggerSeconds + 1, 100000);
+            configuration.Save();
+        }
+    }
+
+    private void DrawSelection(string label, System.Collections.Generic.List<string> options, ref string selectedOption, ref string newPathBuffer)
+    {
+        int currentIndex = options.IndexOf(selectedOption);
+        if (currentIndex < 0) currentIndex = 0;
+
+        if (ImGui.BeginCombo(label, options[currentIndex]))
+        {
+            for (int i = 0; i < options.Count; i++)
             {
-                bool isSelected = (i == currentImageIndex);
-                if (ImGui.Selectable(imageOptions[i], isSelected))
+                bool isSelected = (i == currentIndex);
+                if (ImGui.Selectable(options[i], isSelected))
                 {
-                    configuration.SelectedImage = imageOptions[i];
+                    selectedOption = options[i];
                     configuration.Save();
-
-                    var dllDir = Plugin.PluginInterface.AssemblyLocation.Directory?.FullName
-                                 ?? Plugin.PluginInterface.GetPluginConfigDirectory();
-                    var imgPath = Path.Combine(dllDir, "Data", configuration.SelectedImage);
-                    var soundPath = Path.Combine(dllDir, "Data", configuration.SelectedSound);
-
-                    plugin.MainWindow.Reload(imgPath, soundPath);
+                    ReloadMedia();
                 }
 
                 if (isSelected)
@@ -87,39 +120,27 @@ public class ConfigWindow : Window, IDisposable
             ImGui.EndCombo();
         }
 
-        // === Sound selection ===
-        string[] soundOptions =
+        ImGui.InputText($"New {label} Path", ref newPathBuffer, 256);
+        if (ImGui.Button($"Add {label}") && !string.IsNullOrWhiteSpace(newPathBuffer))
         {
-            "audio/apocbird.wav",
-            "audio/foxy.wav",
-            "audio/scream.mp3"
-        };
-
-        int currentSoundIndex = Array.IndexOf(soundOptions, configuration.SelectedSound);
-        if (currentSoundIndex < 0) currentSoundIndex = 0;
-
-        if (ImGui.BeginCombo("Sound", soundOptions[currentSoundIndex]))
-        {
-            for (int i = 0; i < soundOptions.Length; i++)
+            if (!options.Contains(newPathBuffer))
             {
-                bool isSelected = (i == currentSoundIndex);
-                if (ImGui.Selectable(soundOptions[i], isSelected))
-                {
-                    configuration.SelectedSound = soundOptions[i];
-                    configuration.Save();
-
-                    var dllDir = Plugin.PluginInterface.AssemblyLocation.Directory?.FullName
-                                 ?? Plugin.PluginInterface.GetPluginConfigDirectory();
-                    var imgPath = Path.Combine(dllDir, "Data", configuration.SelectedImage);
-                    var soundPath = Path.Combine(dllDir, "Data", configuration.SelectedSound);
-
-                    plugin.MainWindow.Reload(imgPath, soundPath);
-                }
-
-                if (isSelected)
-                    ImGui.SetItemDefaultFocus();
+                options.Add(newPathBuffer);
+                selectedOption = newPathBuffer;
+                configuration.Save();
+                ReloadMedia();
             }
-            ImGui.EndCombo();
+            newPathBuffer = "";
         }
+    }
+
+    private void ReloadMedia()
+    {
+        var dllDir = Plugin.PluginInterface.AssemblyLocation.Directory?.FullName
+                     ?? Plugin.PluginInterface.GetPluginConfigDirectory();
+        var imgPath = Path.Combine(dllDir, "Data", configuration.SelectedImage);
+        var soundPath = Path.Combine(dllDir, "Data", configuration.SelectedSound);
+
+        plugin.MainWindow.Reload(imgPath, soundPath);
     }
 }
