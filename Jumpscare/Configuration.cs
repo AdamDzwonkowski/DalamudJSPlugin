@@ -31,6 +31,7 @@ public class Configuration : IPluginConfiguration
         "visual/foxy-jumpscare.gif",
         "visual/lick.gif",
         "visual/don.gif",
+        "visual/zenos.png"
     };
 
     private static readonly string[] DefaultSounds =
@@ -39,7 +40,8 @@ public class Configuration : IPluginConfiguration
         "audio/apocbird.wav",
         "audio/pikmin.wav",
         "audio/pipe.wav",
-        "audio/don.wav"
+        "audio/don.wav",
+        "audio/zenos.wav"
     };
 
     public void EnsureDefaults()
