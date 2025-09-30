@@ -41,8 +41,24 @@ public class ConfigWindow : Window, IDisposable
         else
             ImGui.TextColored(new Vector4(1f, 0f, 0f, 1f), "Jumpscare timer is INACTIVE");
 
+        // --- Jumpscare toggle button ---
+        if (plugin.MainWindow.IsRunning)
+        {
+            if (ImGui.Button("Stop Timer"))
+            {
+                plugin.MainWindow.Toggle(); // stops jumpscare
+            }
+        }
+        else
+        {
+            if (ImGui.Button("Start Timer"))
+            {
+                plugin.MainWindow.Toggle(); // starts jumpscare
+            }
+        }
+
         ImGui.Separator();
-        ImGui.Text("Changing Settings resets the timer");
+        ImGui.Text("Changing Settings (aside from Trigger Timing) resets the timer");
 
         bool reloadNeeded = false;
 
@@ -113,17 +129,29 @@ public class ConfigWindow : Window, IDisposable
         ImGui.Separator();
         ImGui.Text("Trigger Timing");
 
+        // --- Min seconds ---
         int minSecs = configuration.MinTriggerSeconds;
         if (ImGui.InputInt("Min Seconds (10)", ref minSecs))
         {
-            configuration.MinTriggerSeconds = Math.Clamp(minSecs, 10, 100000);
+            // Clamp minSecs between 10 and (maxSecs - 1)
+            minSecs = Math.Clamp(minSecs, 10, configuration.MaxTriggerSeconds - 1);
+            configuration.MinTriggerSeconds = minSecs;
             configuration.Save();
         }
 
+        // --- Max seconds ---
         int maxSecs = configuration.MaxTriggerSeconds;
         if (ImGui.InputInt("Max Seconds (100000)", ref maxSecs))
         {
-            configuration.MaxTriggerSeconds = Math.Clamp(maxSecs, configuration.MinTriggerSeconds + 1, 100000);
+            // Clamp maxSecs between (minSecs + 1) and 100000
+            maxSecs = Math.Clamp(maxSecs, configuration.MinTriggerSeconds + 1, 100000);
+            configuration.MaxTriggerSeconds = maxSecs;
+            configuration.Save();
+        }
+        bool showTimer = configuration.ShowCountdownTimer;
+        if (ImGui.Checkbox("Show Countdown Timer", ref showTimer))
+        {
+            configuration.ShowCountdownTimer = showTimer;
             configuration.Save();
         }
     }

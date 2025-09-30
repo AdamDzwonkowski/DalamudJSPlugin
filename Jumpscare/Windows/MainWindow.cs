@@ -229,8 +229,11 @@ public class MainWindow : Window, IDisposable
 
         if (DateTime.Now < triggerTime.Value)
         {
-            var remaining = triggerTime.Value - DateTime.Now;
-            ImGui.TextUnformatted($"Waiting... {remaining.TotalSeconds:F1}s");
+            if (config.ShowCountdownTimer)
+            {
+                var remaining = triggerTime.Value - DateTime.Now;
+                ImGui.TextUnformatted($"Waiting... {remaining.TotalSeconds:F1}s");
+            }
             ImGui.End();
             return;
         }
