@@ -14,6 +14,10 @@ public class ConfigWindow : Window, IDisposable
     private string newImagePath = "";
     private string newSoundPath = "";
 
+    // Store rejection messages so they persist between frames
+    private string imageRejectionMessage = "";
+    private string soundRejectionMessage = "";
+
     public ConfigWindow(Plugin plugin) : base("Configuration###WithConstantID")
     {
         Flags = ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse;
@@ -64,7 +68,7 @@ public class ConfigWindow : Window, IDisposable
 
         // --- Images ---
         var selectedImage = configuration.SelectedImage;
-        DrawSelection("Image", configuration.ImageOptions, ref selectedImage, ref newImagePath);
+        DrawSelection("GIF/PNG", configuration.ImageOptions, ref selectedImage, ref newImagePath);
         if (configuration.SelectedImage != selectedImage)
         {
             configuration.SelectedImage = selectedImage;
@@ -83,7 +87,7 @@ public class ConfigWindow : Window, IDisposable
 
         // --- Sounds ---
         var selectedSound = configuration.SelectedSound;
-        DrawSelection("Sound", configuration.SoundOptions, ref selectedSound, ref newSoundPath);
+        DrawSelection("WAV/MP3", configuration.SoundOptions, ref selectedSound, ref newSoundPath);
         if (configuration.SelectedSound != selectedSound)
         {
             configuration.SelectedSound = selectedSound;
@@ -172,7 +176,11 @@ public class ConfigWindow : Window, IDisposable
         return (imgPath, sndPath);
     }
 
-    private void DrawSelection(string label, System.Collections.Generic.List<string> options, ref string selectedOption, ref string newPathBuffer)
+    private void DrawSelection(
+    string label,
+    System.Collections.Generic.List<string> options,
+    ref string selectedOption,
+    ref string newPathBuffer)
     {
         int currentIndex = options.IndexOf(selectedOption);
         if (currentIndex < 0) currentIndex = 0;
@@ -188,6 +196,7 @@ public class ConfigWindow : Window, IDisposable
                     configuration.Save();
                     ReloadMedia();
                 }
+
                 if (isSelected)
                     ImGui.SetItemDefaultFocus();
             }
@@ -195,18 +204,74 @@ public class ConfigWindow : Window, IDisposable
         }
 
         ImGui.InputText($"New {label} Path", ref newPathBuffer, 256);
+
         if (ImGui.Button($"Add {label}") && !string.IsNullOrWhiteSpace(newPathBuffer))
         {
-            if (!options.Contains(newPathBuffer))
+            if (!File.Exists(newPathBuffer))
             {
-                options.Add(newPathBuffer);
-                selectedOption = newPathBuffer;
-                configuration.Save();
-                ReloadMedia();
+                string msg = $"File not found: {newPathBuffer}";
+                Plugin.Log.Warning(msg);
+
+                if (label == "GIF/PNG") imageRejectionMessage = msg;
+                if (label == "WAV/MP3") soundRejectionMessage = msg;
             }
+            else
+            {
+                FileInfo fileInfo = new FileInfo(newPathBuffer);
+                long maxSizeBytes = 30 * 1024 * 1024; // 30MB
+
+                if (fileInfo.Length > maxSizeBytes)
+                {
+                    string msg = $"File too large (>30MB)";
+                    Plugin.Log.Warning($"Rejected {label} upload: {fileInfo.Length / (1024 * 1024)} MB");
+
+                    if (label == "GIF/PNG") imageRejectionMessage = msg;
+                    if (label == "WAV/MP3") soundRejectionMessage = msg;
+                }
+                else
+                {
+                    string ext = Path.GetExtension(newPathBuffer).ToLowerInvariant();
+                    bool isImage = (label == "GIF/PNG") && (ext == ".gif" || ext == ".png");
+                    bool isSound = (label == "WAV/MP3") && (ext == ".wav" || ext == ".mp3");
+
+                    if (isImage || isSound)
+                    {
+                        if (!options.Contains(newPathBuffer))
+                        {
+                            options.Add(newPathBuffer);
+                            selectedOption = newPathBuffer;
+                            configuration.Save();
+                            ReloadMedia();
+                        }
+
+                        // ✅ Clear rejection message if valid
+                        if (label == "GIF/PNG") imageRejectionMessage = "";
+                        if (label == "WAV/MP3") soundRejectionMessage = "";
+                    }
+                    else
+                    {
+                        string msg = $"Not a {label}: {ext}";
+                        Plugin.Log.Warning($"Rejected {label} upload: unsupported file type {ext}");
+
+                        // ✅ Store rejection persistently
+                        if (label == "GIF/PNG") imageRejectionMessage = msg;
+                        if (label == "WAV/MP3") soundRejectionMessage = msg;
+                    }
+                }
+            }
+
             newPathBuffer = "";
         }
+
+        // ✅ Display rejection message persistently
+        string rejectionMessage = label == "GIF/PNG" ? imageRejectionMessage : soundRejectionMessage;
+        if (!string.IsNullOrEmpty(rejectionMessage))
+        {
+            ImGui.SameLine();
+            ImGui.TextColored(new Vector4(1f, 0f, 0f, 1f), rejectionMessage);
+        }
     }
+
 
     private void ReloadMedia()
     {

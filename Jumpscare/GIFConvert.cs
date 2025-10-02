@@ -63,11 +63,11 @@ namespace Jumpscare
             {
                 var frame = img.Frames[i];
 
-                int delayMs = 100; // fallback
+                int delayMs = 20; // fallback
                 try
                 {
                     delayMs = frame.Metadata.GetGifMetadata().FrameDelay * 10;
-                    if (delayMs <= 0) delayMs = 100;
+                    if (delayMs <= 20) delayMs = 20;
                     Plugin.Log.Info($"GIFConvert: Frame {i} delay set to {delayMs}ms");
                 }
                 catch (Exception ex)
