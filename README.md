@@ -1,5 +1,5 @@
 # Jumpscare Plugin
-**Inspired by the [Terraria mod by ymy (reed)](https://steamcommunity.com/sharedfiles/filedetails/?id=3481943642)**
+**Inspired by the [Terraria mod by joemkdd's Isaac mod](https://steamcommunity.com/sharedfiles/filedetails/?id=3410284721)**
 
 Plays a jumpscare at random.
 
