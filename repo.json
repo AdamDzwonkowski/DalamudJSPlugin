@@ -4,7 +4,7 @@
     "Name": "Jumpscare",
     "InternalName": "JumpScare",
     "AssemblyVersion": "1.0.0",
-    "Description": "Displays an image/gif accompanied by a sound at a random time\n/jumpscare or /js : start timer.\n/jumpscaresettings or /jscfg: change settings of jumpscare",
+    "Description": "Displays an image/gif accompanied by a sound at a random time\n",
     "ApplicableVersion": "any",
     "RepoUrl": "https://github.com/AdamDzwonkowski/DalamudJSPlugin",
     "Tags": [
