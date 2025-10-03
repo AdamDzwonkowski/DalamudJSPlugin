@@ -1,0 +1,33 @@
+[
+  {
+    "Author": "Duster",
+    "Name": "Jumpscare",
+    "InternalName": "JumpScare",
+    "AssemblyVersion": "1.0.0",
+    "Description": "Displays an image/gif accompanied by a sound at a random time\n/jumpscare or /js : start timer.\n/jumpscaresettings or /jscfg: change settings of jumpscare",
+    "ApplicableVersion": "any",
+    "RepoUrl": "https://github.com/AdamDzwonkowski/DalamudJSPlugin",
+    "Tags": [
+      "scary",
+      "scare",
+      "plugin",
+      "custom"
+    ],
+    "CategoryTags": [
+      "Other"
+    ],
+    "DalamudApiLevel": 13,
+    "LoadRequiredState": 0,
+    "LoadSync": false,
+    "CanUnloadAsync": true,
+    "LoadPriority": 0,
+    "IconUrl": "https://raw.githubusercontent.com/AdamDzwonkowski/DalamudJSPlugin/master/icon.png",
+    "Punchline": "Give yourself a heart attack (inspired by ymy (reed)'s Terraria mod).",
+    "AcceptsFeedback": true,
+    "IsHide": "False",
+    "IsTestingExclusive": "False",
+    "DownloadLinkInstall": "https://github.com/AdamDzwonkowski/DalamudJSPlugin/releases/download/1.0.0/Jumpscare.zip",
+    "DownloadLinkTesting": "https://github.com/AdamDzwonkowski/DalamudJSPlugin/releases/download/1.0.0/Jumpscare.zip",
+    "DownloadLinkUpdate": "https://github.com/AdamDzwonkowski/DalamudJSPlugin/releases/download/1.0.0/Jumpscare.zip"
+  },
+]
