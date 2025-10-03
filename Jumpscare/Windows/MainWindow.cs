@@ -2,7 +2,6 @@ using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Windowing;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing;
 using System;
 using System.IO;
 using System.Numerics;
@@ -138,10 +137,6 @@ public class MainWindow : Window, IDisposable
         int seconds = rng.Next(min, max + 1);
         delay = TimeSpan.FromSeconds(seconds);
         triggerTime = DateTime.Now + delay;
-
-        Plugin.Log.Information(
-            $"Next jumpscare scheduled in {seconds} seconds (range {min}-{max}) at {triggerTime}."
-        );
     }
 
     public void ResetPlayback()
@@ -157,7 +152,7 @@ public class MainWindow : Window, IDisposable
             triggerTime = null;
             soundPlayed = false;
 
-            // 🎲 Randomize selection only if enabled
+            // Randomize selection only if enabled
             if (config.RandomizeImages && config.ImageOptions.Count > 0)
             {
                 var idx = rng.Next(config.ImageOptions.Count);
@@ -167,7 +162,6 @@ public class MainWindow : Window, IDisposable
                     "Data",
                     config.ImageOptions[idx]
                 );
-                Plugin.Log.Information($"Randomized image -> {imgPath}");
             }
 
             if (config.RandomizeSounds && config.SoundOptions.Count > 0)
@@ -179,7 +173,6 @@ public class MainWindow : Window, IDisposable
                     "Data",
                     config.SoundOptions[idx]
                 );
-                Plugin.Log.Information($"Randomized sound -> {soundPath}");
             }
 
             BeginPreload();
@@ -187,7 +180,7 @@ public class MainWindow : Window, IDisposable
         }
     }
 
-    public void Toggle()
+    public new void Toggle()
     {
         if (!IsOpen)
         {
@@ -198,7 +191,6 @@ public class MainWindow : Window, IDisposable
         }
         else
         {
-            Plugin.Log.Information("Jumpscare cancelled.");
             triggerTime = null;
             isRunning = false; // mark as stopped
             IsOpen = false;

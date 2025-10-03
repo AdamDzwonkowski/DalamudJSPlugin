@@ -1,7 +1,6 @@
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Textures;
 using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats.Gif;
 using SixLabors.ImageSharp.PixelFormats;
 using System;
 using System.Collections.Generic;
@@ -48,15 +47,12 @@ namespace Jumpscare
             // Create a unique folder for this instance
             tempFolder = Path.Combine(Path.GetTempPath(), "DalamudGifFrames", Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(tempFolder);
-            Plugin.Log.Info($"GIFConvert: Created temp folder at {tempFolder}");
 
             DecodeGifToPngs(gifPath);
         }
 
         private void DecodeGifToPngs(string gifPath)
         {
-            Plugin.Log.Info($"GIFConvert: Loading GIF {gifPath}");
-
             using var img = Image.Load<Rgba32>(gifPath);
 
             for (int i = 0; i < img.Frames.Count; i++)
@@ -68,7 +64,6 @@ namespace Jumpscare
                 {
                     delayMs = frame.Metadata.GetGifMetadata().FrameDelay * 10;
                     if (delayMs <= 20) delayMs = 20;
-                    Plugin.Log.Info($"GIFConvert: Frame {i} delay set to {delayMs}ms");
                 }
                 catch (Exception ex)
                 {
@@ -90,7 +85,6 @@ namespace Jumpscare
                 singleFrameImage.Save(framePath); // Save as PNG
 
                 framePaths.Add((framePath, delayMs));
-                Plugin.Log.Info($"GIFConvert: Saved frame {i} as PNG at {framePath}");
             }
         }
 

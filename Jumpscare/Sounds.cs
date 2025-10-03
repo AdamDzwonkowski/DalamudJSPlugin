@@ -1,8 +1,4 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Media;
 using System.IO;
 
@@ -10,7 +6,7 @@ namespace Jumpscare
 {
     public static class Sounds
     {
-        private static SoundPlayer? player;
+        private static SoundPlayer? Player;
 
         public static void PlayWav(string path)
         {
@@ -18,8 +14,8 @@ namespace Jumpscare
             {
                 if (File.Exists(path))
                 {
-                    player = new SoundPlayer(path);
-                    player.Play(); // non-blocking
+                    Player = new SoundPlayer(path);
+                    Player.Play(); // non-blocking
                 }
                 else
                 {
@@ -34,8 +30,8 @@ namespace Jumpscare
 
         public static void Stop()
         {
-            player?.Stop();
-            player = null;
+            Player?.Stop();
+            Player = null;
         }
     }
 }

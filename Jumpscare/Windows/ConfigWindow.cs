@@ -244,7 +244,7 @@ public class ConfigWindow : Window, IDisposable
                             ReloadMedia();
                         }
 
-                        // ✅ Clear rejection message if valid
+                        // Clear rejection message if valid
                         if (label == "GIF/PNG") imageRejectionMessage = "";
                         if (label == "WAV/MP3") soundRejectionMessage = "";
                     }
@@ -253,7 +253,7 @@ public class ConfigWindow : Window, IDisposable
                         string msg = $"Not a {label}: {ext}";
                         Plugin.Log.Warning($"Rejected {label} upload: unsupported file type {ext}");
 
-                        // ✅ Store rejection persistently
+                        // Store rejection persistently
                         if (label == "GIF/PNG") imageRejectionMessage = msg;
                         if (label == "WAV/MP3") soundRejectionMessage = msg;
                     }
@@ -263,7 +263,7 @@ public class ConfigWindow : Window, IDisposable
             newPathBuffer = "";
         }
 
-        // ✅ Display rejection message persistently
+        // Display rejection message persistently
         string rejectionMessage = label == "GIF/PNG" ? imageRejectionMessage : soundRejectionMessage;
         if (!string.IsNullOrEmpty(rejectionMessage))
         {

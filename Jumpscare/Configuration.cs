@@ -1,7 +1,6 @@
 using Dalamud.Configuration;
 using System;
 using System.Collections.Generic;
-using System.IO;
 
 namespace Jumpscare;
 
@@ -22,7 +21,7 @@ public class Configuration : IPluginConfiguration
     public List<string> ImageOptions { get; set; } = new();
     public List<string> SoundOptions { get; set; } = new();
 
-    // ⏱ New random timer settings
+    // New random timer settings
     public int MinTriggerSeconds { get; set; } = 10;
     public int MaxTriggerSeconds { get; set; } = 100;
     public bool ShowCountdownTimer { get; set; } = true;
@@ -66,7 +65,7 @@ public class Configuration : IPluginConfiguration
         if (string.IsNullOrEmpty(SelectedSound))
             SelectedSound = SoundOptions[0];
 
-        // ✅ Clamp min/max between 10–100000
+        // Clamp min/max between 10–100000
         if (MinTriggerSeconds < 10) MinTriggerSeconds = 10;
         if (MaxTriggerSeconds > 100000) MaxTriggerSeconds = 100000;
         if (MaxTriggerSeconds <= MinTriggerSeconds)
