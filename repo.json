@@ -22,7 +22,7 @@
     "CanUnloadAsync": true,
     "LoadPriority": 0,
     "IconUrl": "https://raw.githubusercontent.com/AdamDzwonkowski/DalamudJSPlugin/master/icon.png",
-    "Punchline": "Give yourself a heart attack (inspired by ymy (reed)'s Terraria mod).",
+    "Punchline": "Give yourself a heart attack (inspired by joemkdd's Isaac mod).",
     "AcceptsFeedback": true,
     "IsHide": "False",
     "IsTestingExclusive": "False",
