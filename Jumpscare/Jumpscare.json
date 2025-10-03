@@ -1,8 +1,8 @@
 {
   "Author": "Duster",
   "Name": "Jumpscare",
-  "Punchline": "Give yourself a heart attack (inspired by ymy (reed)'s Terraria mod).",
-  "Description": "/jumpscare or /js : start timer.\n/jumpscaresettings or /jscfg: change settings of jumpscare",
+  "Punchline": "Give yourself a heart attack (inspired by joemkdd's Isaac mod).",
+  "Description": "/jumpscare or /js : Start/stop jumpscare timer.\n/jumpscareconfig or /jscfg: Open the jumpscare configuration window",
   "ApplicableVersion": "any",
   "Tags": [
     "scary",
