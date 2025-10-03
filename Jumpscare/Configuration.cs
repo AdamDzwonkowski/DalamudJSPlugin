@@ -23,8 +23,8 @@ public class Configuration : IPluginConfiguration
 
     // New random timer settings
     public int MinTriggerSeconds { get; set; } = 10;
-    public int MaxTriggerSeconds { get; set; } = 100;
-    public bool ShowCountdownTimer { get; set; } = true;
+    public int MaxTriggerSeconds { get; set; } = 10000;
+    public bool ShowCountdownTimer { get; set; } = false;
 
 
     private static readonly string[] DefaultImages =
