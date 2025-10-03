@@ -1,9 +1,26 @@
-### Activating in-game
+# Jumpscare Plugin
+**Inspired by the [Terraria mod by ymy (reed)](https://steamcommunity.com/sharedfiles/filedetails/?id=3481943642)**
 
-1. Launch the game and use `/xlsettings` in chat or `xlsettings` in the Dalamud Console to open up the Dalamud settings.
-    * In here, go to `Experimental`, and add the full path to the `SamplePlugin.dll` to the list of Dev Plugin Locations.
-2. Next, use `/xlplugins` (chat) or `xlplugins` (console) to open up the Plugin Installer.
-    * In here, go to `Dev Tools > Installed Dev Plugins`, and the `SamplePlugin` should be visible. Enable it.
-3. You should now be able to use `/pmycommand` (chat) or `pmycommand` (console)!
+Plays a jumpscare at random.
 
-Note that you only need to add it to the Dev Plugin Locations once (Step 1); it is preserved afterwards. You can disable, enable, or load your plugin on startup through the Plugin Installer.
+You can select from a list of default images/sounds.
+
+Uploading custom assets for use is also possible (image format must be **gif/png**, sound format must be **wav/mp3**, file size **less than 30mb**)
+
+**Default values:**
+- Withered Foxy jumpscare
+- Randomization off
+- Randomly between 10-10000 seconds
+- Timer off
+
+## Installation
+- Enter **/xlsettings** in the chat window or select **Dalamud Settings** in the System menu.
+- Go to the **Experimental** tab and scroll down to the **Custom Plugin Repositories** section.
+- Copy and paste the repo.json link into the first free text input field.
+```
+https://raw.githubusercontent.com/AdamDzwonkowski/DalamudJSPlugin/master/repo.json
+```
+- Click on the + button and make sure the checkmark beside the new field is **Enabled**.
+- Click on the **Save** icon in the bottom right.
+- Enter **/xlplugins** in the chat window or select **Dalamud Plugins** in the System menu.
+- In the **All Plugins** tab, search for **Jumpscare** by Duster and install it.
