@@ -9,9 +9,9 @@ Uploading custom assets for use is also possible (image format must be **gif/png
 
 **Default values:**
 - Withered Foxy jumpscare
-- Randomization off
-- Randomly between 10-10000 seconds
-- Timer off
+- Image+Sound Randomization off
+- Timer between 10-10000 seconds
+- Timer display off
 
 ## Installation
 - Enter **/xlsettings** in the chat window or select **Dalamud Settings** in the System menu.
