@@ -5,7 +5,7 @@ Plays a jumpscare at random.
 
 You can select from a list of default images/sounds.
 
-Uploading custom assets for use is also possible (image format must be **gif/png**, sound format must be **wav/mp3**, file size **less than 30mb**)
+Uploading custom assets for use is also possible (image format must be **gif/png/jpg**, sound format must be **wav/mp3**, file size **less than 30mb**)
 
 **Default values:**
 - Withered Foxy jumpscare
