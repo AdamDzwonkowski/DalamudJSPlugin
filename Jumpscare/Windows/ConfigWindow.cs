@@ -68,7 +68,7 @@ public class ConfigWindow : Window, IDisposable
 
         // --- Images ---
         var selectedImage = configuration.SelectedImage;
-        DrawSelection("GIF/PNG/JPG", configuration.ImageOptions, ref selectedImage, ref newImagePath);
+        DrawSelection("GIF/PNG/JPG/WEBP", configuration.ImageOptions, ref selectedImage, ref newImagePath);
         if (configuration.SelectedImage != selectedImage)
         {
             configuration.SelectedImage = selectedImage;
@@ -212,7 +212,7 @@ public class ConfigWindow : Window, IDisposable
                 string msg = $"File not found: {newPathBuffer}";
                 Plugin.Log.Warning(msg);
 
-                if (label == "GIF/PNG/JPG") imageRejectionMessage = msg;
+                if (label == "GIF/PNG/JPG/WEBP") imageRejectionMessage = msg;
                 if (label == "WAV/MP3") soundRejectionMessage = msg;
             }
             else
@@ -225,13 +225,13 @@ public class ConfigWindow : Window, IDisposable
                     string msg = $"File too large (>30MB)";
                     Plugin.Log.Warning($"Rejected {label} upload: {fileInfo.Length / (1024 * 1024)} MB");
 
-                    if (label == "GIF/PNG/JPG") imageRejectionMessage = msg;
+                    if (label == "GIF/PNG/JPG/WEBP") imageRejectionMessage = msg;
                     if (label == "WAV/MP3") soundRejectionMessage = msg;
                 }
                 else
                 {
                     string ext = Path.GetExtension(newPathBuffer).ToLowerInvariant();
-                    bool isImage = (label == "GIF/PNG/JPG") && (ext == ".gif" || ext == ".png" || ext == ".jpg");
+                    bool isImage = (label == "GIF/PNG/JPG/WEBP") && (ext == ".gif" || ext == ".png" || ext == ".jpeg" || ext == ".jpg" || ext == ".webp");
                     bool isSound = (label == "WAV/MP3") && (ext == ".wav" || ext == ".mp3");
 
                     if (isImage || isSound)
@@ -245,7 +245,7 @@ public class ConfigWindow : Window, IDisposable
                         }
 
                         // Clear rejection message if valid
-                        if (label == "GIF/PNG/JPG") imageRejectionMessage = "";
+                        if (label == "GIF/PNG/JPG/WEBP") imageRejectionMessage = "";
                         if (label == "WAV/MP3") soundRejectionMessage = "";
                     }
                     else
@@ -254,7 +254,7 @@ public class ConfigWindow : Window, IDisposable
                         Plugin.Log.Warning($"Rejected {label} upload: unsupported file type {ext}");
 
                         // Store rejection persistently
-                        if (label == "GIF/PNG/JPG") imageRejectionMessage = msg;
+                        if (label == "GIF/PNG/JPG/WEBP") imageRejectionMessage = msg;
                         if (label == "WAV/MP3") soundRejectionMessage = msg;
                     }
                 }
@@ -264,7 +264,7 @@ public class ConfigWindow : Window, IDisposable
         }
 
         // Display rejection message persistently
-        string rejectionMessage = label == "GIF/PNG/JPG" ? imageRejectionMessage : soundRejectionMessage;
+        string rejectionMessage = label == "GIF/PNG/JPG/WEBP" ? imageRejectionMessage : soundRejectionMessage;
         if (!string.IsNullOrEmpty(rejectionMessage))
         {
             ImGui.SameLine();

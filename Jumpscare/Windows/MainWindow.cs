@@ -104,7 +104,7 @@ public class MainWindow : Window, IDisposable
                 }
                 else
                 {
-                    // --- Static PNG/JPG as single-frame GIFConvert ---
+                    // --- Static PNG/JPG/WEBP as single-frame GIFConvert ---
                     using var img = Image.Load<Rgba32>(imgPath);
                     string tempGif = Path.Combine(Path.GetTempPath(), $"single_frame_{Guid.NewGuid()}.gif");
 
