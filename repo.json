@@ -3,7 +3,7 @@
     "Author": "Duster",
     "Name": "Jumpscare",
     "InternalName": "JumpScare",
-    "AssemblyVersion": "1.1.0",
+    "AssemblyVersion": "1.1.1",
     "Description": "Displays an image/gif accompanied by a sound at a random time\n",
     "ApplicableVersion": "any",
     "RepoUrl": "https://github.com/AdamDzwonkowski/DalamudJSPlugin",
@@ -16,7 +16,7 @@
     "CategoryTags": [
       "Other"
     ],
-    "DalamudApiLevel": 13,
+    "DalamudApiLevel": 14,
     "LoadRequiredState": 0,
     "LoadSync": false,
     "CanUnloadAsync": true,
